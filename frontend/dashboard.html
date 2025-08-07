@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - BrainyBalance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#6366f1',
+                        'primary-dark': '#5856eb',
+                        'accent': '#fbbf24',
+                        'accent-dark': '#f59e0b',
+                        'dark-bg': '#0a0a0b',
+                        'dark-card': '#1a1a1b',
+                        'dark-border': '#2d2d30',
+                    },
+                    backgroundImage: {
+                        'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        'gradient-secondary': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                        'gradient-accent': 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                        'gradient-dark': 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%)',
+                        'gradient-card': 'linear-gradient(135deg, #1e1e1f 0%, #2a2a2b 100%)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="font-inter bg-dark-bg text-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-md border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 lg:px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div
+                        class="flex items-center space-x-2 text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        <i
+                            class="fas fa-graduation-cap text-2xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"></i>
+                        <span>BrainyBalance</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="dashboard.html" class="text-indigo-400 border-b-2 border-indigo-400 pb-1">Dashboard</a>
+                        <a href="tasks.html" class="text-gray-300 hover:text-indigo-400 transition-colors">Tasks</a>
+                        <a href="schedule.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
+                        <a href="analytics.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
+                        <a href="pomodoro.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="relative text-gray-300 hover:text-indigo-400 transition-colors">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span
+                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                    </button>
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
+                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=JS" alt="Profile"
+                                class="w-8 h-8 rounded-full">
+                            <span class="hidden md:block">John Student</span>
+                            <i class="fas fa-chevron-down text-sm"></i>
+                        </button>
+                        <div
+                            class="absolute right-0 top-full mt-2 w-48 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Profile
+                                Settings</a>
+                            <a href="#"
+                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Preferences</a>
+                            <hr class="border-dark-border">
+                            <a href="login.html" class="block px-4 py-2 text-red-400 hover:bg-gray-800">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="md:hidden bg-dark-card border-b border-dark-border">
+        <div class="flex space-x-1 px-4 py-2 overflow-x-auto">
+            <a href="dashboard.html"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">Dashboard</a>
+            <a href="tasks.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Tasks</a>
+            <a href="schedule.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
+            <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
+            <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold mb-2">Welcome back, John! 👋</h1>
+            <p class="text-gray-400">Here's what's happening with your academic schedule today.</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Tasks Due Today</p>
+                        <p class="text-2xl font-bold text-red-400">5</p>
+                    </div>
+                    <div class="bg-red-500/20 p-3 rounded-lg">
+                        <i class="fas fa-exclamation-triangle text-red-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Completed Tasks</p>
+                        <p class="text-2xl font-bold text-green-400">12</p>
+                    </div>
+                    <div class="bg-green-500/20 p-3 rounded-lg">
+                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Study Hours</p>
+                        <p class="text-2xl font-bold text-blue-400">6.5</p>
+                    </div>
+                    <div class="bg-blue-500/20 p-3 rounded-lg">
+                        <i class="fas fa-clock text-blue-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Productivity</p>
+                        <p class="text-2xl font-bold text-purple-400">85%</p>
+                    </div>
+                    <div class="bg-purple-500/20 p-3 rounded-lg">
+                        <i class="fas fa-chart-line text-purple-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Quick Add Task -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-plus-circle text-indigo-400 mr-2"></i>
+                        Quick Add Task
+                    </h2>
+                    <form id="quickTaskForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" placeholder="Task title..."
+                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <select
+                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="">Select Priority</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="datetime-local"
+                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <button type="submit"
+                                class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all">
+                                <i class="fas fa-plus mr-2"></i>Add Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Today's Schedule -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-calendar-day text-indigo-400 mr-2"></i>
+                            Today's Schedule
+                        </h2>
+                        <a href="schedule.html" class="text-indigo-400 hover:text-indigo-300 text-sm">View All</a>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-red-500">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-red-400">Math Assignment Due</h3>
+                                <p class="text-gray-400 text-sm">Calculus Chapter 5 Problems</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-red-400 font-medium">11:59 PM</p>
+                                <p class="text-gray-400 text-sm">High Priority</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-blue-500">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-blue-400">Study Session</h3>
+                                <p class="text-gray-400 text-sm">Physics - Quantum Mechanics</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-blue-400 font-medium">2:00 PM</p>
+                                <p class="text-gray-400 text-sm">2 hours</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-green-500">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-green-400">Group Meeting</h3>
+                                <p class="text-gray-400 text-sm">CS Project Discussion</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-green-400 font-medium">5:30 PM</p>
+                                <p class="text-gray-400 text-sm">1 hour</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-6 flex items-center">
+                        <i class="fas fa-history text-indigo-400 mr-2"></i>
+                        Recent Activity
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-green-500/20 p-2 rounded-full">
+                                <i class="fas fa-check text-green-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-white">Completed "Chemistry Lab Report"</p>
+                                <p class="text-gray-400 text-sm">2 hours ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-blue-500/20 p-2 rounded-full">
+                                <i class="fas fa-plus text-blue-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-white">Added "Study for Midterm"</p>
+                                <p class="text-gray-400 text-sm">5 hours ago</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-purple-500/20 p-2 rounded-full">
+                                <i class="fas fa-clock text-purple-400"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-white">Completed 2 Pomodoro sessions</p>
+                                <p class="text-gray-400 text-sm">Yesterday</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-8">
+                <!-- AI Scheduler Recommendations -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-robot text-indigo-400 mr-2"></i>
+                        AI Recommendations
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                                <span class="font-medium text-yellow-400">Study Tip</span>
+                            </div>
+                            <p class="text-gray-300 text-sm">Schedule your Math study session for 10 AM - you're most
+                                productive then!</p>
+                        </div>
+                        <div class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-exclamation-circle text-orange-400 mr-2"></i>
+                                <span class="font-medium text-orange-400">Deadline Alert</span>
+                            </div>
+                            <p class="text-gray-300 text-sm">History essay due in 3 days. Consider starting today!</p>
+                        </div>
+                        <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-calendar-plus text-green-400 mr-2"></i>
+                                <span class="font-medium text-green-400">Schedule Suggestion</span>
+                            </div>
+                            <p class="text-gray-300 text-sm">Free slot available at 3 PM for Chemistry review.</p>
+                        </div>
+                    </div>
+                    <button
+                        class="w-full mt-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-2 rounded-lg transition-all">
+                        Generate New Schedule
+                    </button>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-bolt text-indigo-400 mr-2"></i>
+                        Quick Actions
+                    </h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="window.location.href='pomodoro.html'"
+                            class="bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 p-4 rounded-lg transition-all text-center">
+                            <i class="fas fa-play-circle text-2xl mb-2"></i>
+                            <p class="text-sm">Start Pomodoro</p>
+                        </button>
+                        <button onclick="window.location.href='tasks.html'"
+                            class="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 text-blue-400 p-4 rounded-lg transition-all text-center">
+                            <i class="fas fa-plus text-2xl mb-2"></i>
+                            <p class="text-sm">Add Task</p>
+                        </button>
+                        <button onclick="window.location.href='schedule.html'"
+                            class="bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-400 p-4 rounded-lg transition-all text-center">
+                            <i class="fas fa-calendar text-2xl mb-2"></i>
+                            <p class="text-sm">View Schedule</p>
+                        </button>
+                        <button onclick="window.location.href='analytics.html'"
+                            class="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 text-purple-400 p-4 rounded-lg transition-all text-center">
+                            <i class="fas fa-chart-bar text-2xl mb-2"></i>
+                            <p class="text-sm">Analytics</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Overview -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-chart-pie text-indigo-400 mr-2"></i>
+                        Weekly Progress
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-300">Tasks Completed</span>
+                                <span class="text-green-400">85%</span>
+                            </div>
+                            <div class="w-full bg-dark-bg rounded-full h-2">
+                                <div class="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full"
+                                    style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-300">Study Hours</span>
+                                <span class="text-blue-400">72%</span>
+                            </div>
+                            <div class="w-full bg-dark-bg rounded-full h-2">
+                                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full"
+                                    style="width: 72%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-gray-300">Assignment Submissions</span>
+                                <span class="text-purple-400">90%</span>
+                            </div>
+                            <div class="w-full bg-dark-bg rounded-full h-2">
+                                <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full"
+                                    style="width: 90%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

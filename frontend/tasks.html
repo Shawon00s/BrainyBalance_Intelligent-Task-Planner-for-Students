@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks - BrainyBalance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#6366f1',
+                        'primary-dark': '#5856eb',
+                        'accent': '#fbbf24',
+                        'accent-dark': '#f59e0b',
+                        'dark-bg': '#0a0a0b',
+                        'dark-card': '#1a1a1b',
+                        'dark-border': '#2d2d30',
+                    },
+                    backgroundImage: {
+                        'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        'gradient-secondary': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                        'gradient-accent': 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                        'gradient-dark': 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%)',
+                        'gradient-card': 'linear-gradient(135deg, #1e1e1f 0%, #2a2a2b 100%)',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="font-inter bg-dark-bg text-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-md border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 lg:px-6">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div
+                        class="flex items-center space-x-2 text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        <i
+                            class="fas fa-graduation-cap text-2xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"></i>
+                        <span>BrainyBalance</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="dashboard.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Dashboard</a>
+                        <a href="tasks.html" class="text-indigo-400 border-b-2 border-indigo-400 pb-1">Tasks</a>
+                        <a href="schedule.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
+                        <a href="analytics.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
+                        <a href="pomodoro.html"
+                            class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="relative text-gray-300 hover:text-indigo-400 transition-colors">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span
+                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                    </button>
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
+                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=JS" alt="Profile"
+                                class="w-8 h-8 rounded-full">
+                            <span class="hidden md:block">John Student</span>
+                            <i class="fas fa-chevron-down text-sm"></i>
+                        </button>
+                        <div
+                            class="absolute right-0 top-full mt-2 w-48 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Profile
+                                Settings</a>
+                            <a href="#"
+                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Preferences</a>
+                            <hr class="border-dark-border">
+                            <a href="login.html" class="block px-4 py-2 text-red-400 hover:bg-gray-800">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="md:hidden bg-dark-card border-b border-dark-border">
+        <div class="flex space-x-1 px-4 py-2 overflow-x-auto">
+            <a href="dashboard.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Dashboard</a>
+            <a href="tasks.html"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">Tasks</a>
+            <a href="schedule.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
+            <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
+            <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">Task Management</h1>
+                <p class="text-gray-400">Organize and track your academic tasks efficiently</p>
+            </div>
+            <button id="addTaskBtn"
+                class="mt-4 md:mt-0 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center">
+                <i class="fas fa-plus mr-2"></i>
+                Add New Task
+            </button>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="bg-gradient-card rounded-xl p-6 border border-dark-border mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchTasks" placeholder="Search tasks..."
+                        class="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400">
+                </div>
+                <select id="priorityFilter"
+                    class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="">All Priorities</option>
+                    <option value="high">High Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="low">Low Priority</option>
+                </select>
+                <select id="statusFilter"
+                    class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <select id="categoryFilter"
+                    class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    <option value="">All Categories</option>
+                    <option value="assignment">Assignment</option>
+                    <option value="exam">Exam</option>
+                    <option value="project">Project</option>
+                    <option value="study">Study</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Task Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Total Tasks</p>
+                        <p class="text-2xl font-bold text-blue-400">24</p>
+                    </div>
+                    <div class="bg-blue-500/20 p-3 rounded-lg">
+                        <i class="fas fa-tasks text-blue-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Pending</p>
+                        <p class="text-2xl font-bold text-yellow-400">8</p>
+                    </div>
+                    <div class="bg-yellow-500/20 p-3 rounded-lg">
+                        <i class="fas fa-clock text-yellow-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">In Progress</p>
+                        <p class="text-2xl font-bold text-orange-400">4</p>
+                    </div>
+                    <div class="bg-orange-500/20 p-3 rounded-lg">
+                        <i class="fas fa-spinner text-orange-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">Completed</p>
+                        <p class="text-2xl font-bold text-green-400">12</p>
+                    </div>
+                    <div class="bg-green-500/20 p-3 rounded-lg">
+                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Task List -->
+        <div class="bg-gradient-card rounded-xl border border-dark-border">
+            <div class="p-6 border-b border-dark-border">
+                <h2 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-list text-indigo-400 mr-2"></i>
+                    Your Tasks
+                </h2>
+            </div>
+            <div id="taskList" class="divide-y divide-dark-border">
+                <!-- Task Item -->
+                <div class="p-6 hover:bg-dark-bg/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <input type="checkbox"
+                                class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-white mb-1">Mathematics Assignment - Calculus Chapter 5</h3>
+                                <p class="text-gray-400 text-sm mb-2">Complete problems 1-20 from the textbook and
+                                    submit solutions</p>
+                                <div class="flex items-center space-x-4 text-xs">
+                                    <span class="bg-red-500/20 text-red-400 px-2 py-1 rounded-full">High Priority</span>
+                                    <span class="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Assignment</span>
+                                    <span class="text-gray-400"><i class="fas fa-clock mr-1"></i>Due: Today, 11:59
+                                        PM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-gray-400 hover:text-blue-400 p-2">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-red-400 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-indigo-400 p-2">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Item -->
+                <div class="p-6 hover:bg-dark-bg/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <input type="checkbox"
+                                class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-white mb-1">Physics Study Session</h3>
+                                <p class="text-gray-400 text-sm mb-2">Review quantum mechanics concepts for upcoming
+                                    midterm</p>
+                                <div class="flex items-center space-x-4 text-xs">
+                                    <span class="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Medium
+                                        Priority</span>
+                                    <span class="bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full">Study</span>
+                                    <span class="text-gray-400"><i class="fas fa-clock mr-1"></i>Due: Tomorrow, 2:00
+                                        PM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-gray-400 hover:text-blue-400 p-2">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-red-400 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-indigo-400 p-2">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Item -->
+                <div class="p-6 hover:bg-dark-bg/50 transition-colors opacity-50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <input type="checkbox" checked
+                                class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-white mb-1 line-through">Chemistry Lab Report</h3>
+                                <p class="text-gray-400 text-sm mb-2">Complete analysis of organic compound synthesis
+                                    experiment</p>
+                                <div class="flex items-center space-x-4 text-xs">
+                                    <span class="bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Completed</span>
+                                    <span class="bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">Assignment</span>
+                                    <span class="text-gray-400"><i class="fas fa-check mr-1"></i>Completed 2 hours
+                                        ago</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-gray-400 hover:text-blue-400 p-2">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-red-400 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-indigo-400 p-2">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Item -->
+                <div class="p-6 hover:bg-dark-bg/50 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <input type="checkbox"
+                                class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
+                            <div class="flex-1">
+                                <h3 class="font-medium text-white mb-1">CS Project - Final Implementation</h3>
+                                <p class="text-gray-400 text-sm mb-2">Complete the web application frontend and
+                                    integrate with backend API</p>
+                                <div class="flex items-center space-x-4 text-xs">
+                                    <span class="bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">In
+                                        Progress</span>
+                                    <span class="bg-green-500/20 text-green-400 px-2 py-1 rounded-full">Project</span>
+                                    <span class="text-gray-400"><i class="fas fa-clock mr-1"></i>Due: Next Week</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="text-gray-400 hover:text-blue-400 p-2">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-red-400 p-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="text-gray-400 hover:text-indigo-400 p-2">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="bg-gradient-card rounded-xl border border-dark-border p-6 w-full max-w-md">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold">Add New Task</h2>
+                    <button id="closeModal" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="addTaskForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Task Title</label>
+                        <input type="text" name="title" required
+                            class="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
+                            placeholder="Enter task title...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                        <textarea name="description" rows="3"
+                            class="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
+                            placeholder="Task description..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Priority</label>
+                            <select name="priority" required
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="">Select Priority</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Category</label>
+                            <select name="category" required
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="">Select Category</option>
+                                <option value="assignment">Assignment</option>
+                                <option value="exam">Exam</option>
+                                <option value="project">Project</option>
+                                <option value="study">Study</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Due Date & Time</label>
+                        <input type="datetime-local" name="dueDate" required
+                            class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="cancelTask"
+                            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-medium transition-all">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-3 rounded-lg font-medium transition-all">
+                            Add Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/tasks.js"></script>
+</body>
+
+</html>
