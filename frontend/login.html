@@ -257,7 +257,36 @@
         </div>
     </div>
 
-    <script src="js/auth.js"></script>
+    <!-- Temporarily disabled to prevent conflicts -->
+    <!-- <script src="js/auth.js"></script> -->
+    <script src="clear-storage.js"></script>
+    <script src="debug-auth.js"></script>
+    <script>
+        // Override the form submission to use debug functions
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🎯 Login page loaded, no auto-redirects');
+
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    const formData = new FormData(this);
+                    const userData = {
+                        name: formData.get('name'),
+                        email: formData.get('email'),
+                        password: formData.get('password')
+                    };
+
+                    console.log('🎯 Form submitted, calling debug register...');
+                    debugRegisterUser(userData);
+                });
+            }
+        });
+    </script>
+
+    <!-- Debug Script for Login -->
+    <script src="debug-login.js"></script>
 </body>
 
 </html>

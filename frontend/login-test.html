@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">Login Debug Test</h1>
+
+        <div class="max-w-md mx-auto">
+            <div class="bg-gray-800 p-6 rounded-lg mb-6">
+                <h2 class="text-xl font-semibold mb-4">Quick Test</h2>
+                <button id="checkUsers" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mb-4">
+                    Check Users in Database
+                </button>
+                <div id="userList"></div>
+            </div>
+
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <h2 class="text-xl font-semibold mb-4">Test Login</h2>
+                <form id="testLoginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email:</label>
+                        <input type="email" id="testEmail" class="w-full p-2 rounded bg-gray-700 text-white"
+                            placeholder="Enter email">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Password:</label>
+                        <input type="password" id="testPassword" class="w-full p-2 rounded bg-gray-700 text-white"
+                            placeholder="Enter password">
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 p-2 rounded">
+                        Test Login
+                    </button>
+                </form>
+            </div>
+
+            <div id="results" class="mt-6 p-4 bg-gray-800 rounded-lg hidden">
+                <h3 class="font-semibold mb-2">Results:</h3>
+                <pre id="resultText" class="text-sm bg-gray-900 p-2 rounded overflow-auto"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('checkUsers').addEventListener('click', async function () {
+            const userList = document.getElementById('userList');
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/test-users');
+                const data = await response.json();
+                userList.innerHTML = `
+                    <div class="bg-gray-900 p-2 rounded">
+                        <p><strong>User Count:</strong> ${data.count}</p>
+                        <div class="mt-2">
+                            ${data.users.map(user => `
+                                <div class="text-sm mb-1">
+                                    📧 ${user.email} (${user.name})
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                userList.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+            }
+        });
+
+        document.getElementById('testLoginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            const results = document.getElementById('results');
+            const resultText = document.getElementById('resultText');
+
+            results.classList.remove('hidden');
+            resultText.textContent = 'Testing login...';
+
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                resultText.textContent = JSON.stringify({
+                    status: response.status,
+                    ok: response.ok,
+                    data: data
+                }, null, 2);
+
+                if (response.ok) {
+                    resultText.style.color = '#10B981'; // green
+                } else {
+                    resultText.style.color = '#EF4444'; // red
+                }
+
+            } catch (error) {
+                resultText.textContent = `Error: ${error.message}`;
+                resultText.style.color = '#EF4444'; // red
+            }
+        });
+    </script>
+</body>
+
+</html>

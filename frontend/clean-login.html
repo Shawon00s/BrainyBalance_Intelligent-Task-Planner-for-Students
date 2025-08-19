@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Login Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+    <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h1 class="text-2xl font-bold mb-6 text-center">Clean Login Test</h1>
+
+        <form id="cleanLoginForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2">Email:</label>
+                <input type="email" id="cleanEmail"
+                    class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500"
+                    placeholder="Enter email" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2">Password:</label>
+                <input type="password" id="cleanPassword"
+                    class="w-full p-3 rounded bg-gray-700 text-white border border-gray-600 focus:border-blue-500"
+                    placeholder="Enter password" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded font-semibold">
+                Login
+            </button>
+        </form>
+
+        <div class="mt-6 p-4 bg-gray-700 rounded">
+            <h3 class="font-semibold mb-2">Console Output:</h3>
+            <div id="output" class="text-sm bg-gray-900 p-2 rounded max-h-40 overflow-y-auto"></div>
+        </div>
+
+        <div class="mt-4 space-y-2">
+            <button id="checkUsers" class="w-full bg-green-600 hover:bg-green-700 p-2 rounded text-sm">
+                Check Users in Database
+            </button>
+            <button id="clearStorage" class="w-full bg-red-600 hover:bg-red-700 p-2 rounded text-sm">
+                Clear Storage
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Output logger
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'text-red-400' : type === 'success' ? 'text-green-400' : 'text-blue-400';
+            output.innerHTML += `<div class="${color}">[${timestamp}] ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+
+        // Clear output
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        // Login function
+        async function performLogin(email, password) {
+            try {
+                log('🔐 Starting login attempt...');
+                log(`📧 Email: ${email}`);
+                log(`🔑 Password length: ${password.length}`);
+
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                log(`📡 Response status: ${response.status}`);
+                log(`📡 Response ok: ${response.ok}`);
+
+                const data = await response.json();
+                log(`📊 Response data: ${JSON.stringify(data, null, 2)}`);
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                // Save to localStorage with BOTH keys for compatibility
+                localStorage.setItem('authToken', data.token);  // For auth.js compatibility
+                localStorage.setItem('token', data.token);      // For dashboard.js compatibility
+                localStorage.setItem('user', JSON.stringify(data.user));
+
+                log('✅ Login successful! Token saved.', 'success');
+                log('🚀 Redirecting to dashboard...', 'success');
+
+                // Wait a bit then redirect
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+
+                return data;
+
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Check users function
+        async function checkUsers() {
+            try {
+                log('👥 Checking users in database...');
+                const response = await fetch('http://localhost:3000/api/auth/test-users');
+                const data = await response.json();
+                log(`📊 Users found: ${data.count}`, 'success');
+                data.users.forEach(user => {
+                    log(`  📧 ${user.email} (${user.name})`);
+                });
+            } catch (error) {
+                log(`❌ Error checking users: ${error.message}`, 'error');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function () {
+            log('🎯 Clean login test page loaded');
+
+            // Login form
+            document.getElementById('cleanLoginForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                clearOutput();
+
+                const email = document.getElementById('cleanEmail').value;
+                const password = document.getElementById('cleanPassword').value;
+
+                if (!email || !password) {
+                    log('❌ Please fill in both fields', 'error');
+                    return;
+                }
+
+                await performLogin(email, password);
+            });
+
+            // Check users button
+            document.getElementById('checkUsers').addEventListener('click', checkUsers);
+
+            // Clear storage button
+            document.getElementById('clearStorage').addEventListener('click', function () {
+                localStorage.clear();
+                log('🧹 Storage cleared', 'success');
+            });
+
+            // Auto-check users on load
+            setTimeout(checkUsers, 1000);
+        });
+    </script>
+</body>
+
+</html>

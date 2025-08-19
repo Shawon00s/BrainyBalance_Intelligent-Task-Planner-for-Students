@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainyBalance - Backend Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">🔧 BrainyBalance Backend Test</h1>
+
+        <div class="space-y-4">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-xl font-semibold mb-2">Backend Status</h2>
+                <p id="backendStatus" class="text-yellow-400">Testing connection...</p>
+            </div>
+
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-xl font-semibold mb-2">Instructions</h2>
+                <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                    <li>Make sure the backend server is running (you should see "Server is running on port 3000")</li>
+                    <li>Right-click on any HTML file in the frontend folder</li>
+                    <li>Select "Open with Live Server" or click the "Go Live" button in VS Code</li>
+                    <li>The frontend will open in your browser (usually on port 5500)</li>
+                    <li>The frontend will communicate with the backend on port 3000</li>
+                </ol>
+            </div>
+
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-xl font-semibold mb-2">Quick Navigation</h2>
+                <div class="space-y-2">
+                    <a href="login.html" class="block text-blue-400 hover:text-blue-300">📝 Login/Register Page</a>
+                    <a href="dashboard.html" class="block text-blue-400 hover:text-blue-300">📊 Dashboard (requires
+                        login)</a>
+                    <a href="tasks.html" class="block text-blue-400 hover:text-blue-300">✅ Task Management</a>
+                    <a href="index.html" class="block text-blue-400 hover:text-blue-300">🏠 Main Landing Page</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test backend connection
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        async function testBackend() {
+            const statusElement = document.getElementById('backendStatus');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    statusElement.innerHTML = `
+                        <span class="text-green-400">✅ Backend is running!</span><br>
+                        <small class="text-gray-400">Status: ${data.status || 'OK'}</small><br>
+                        <small class="text-gray-400">Database: ${data.database || 'Connected'}</small>
+                    `;
+                } else {
+                    throw new Error('Backend responded with error');
+                }
+            } catch (error) {
+                statusElement.innerHTML = `
+                    <span class="text-red-400">❌ Backend not responding</span><br>
+                    <small class="text-gray-400">Make sure the backend server is running on port 3000</small><br>
+                    <small class="text-gray-400">Error: ${error.message}</small>
+                `;
+            }
+        }
+
+        // Test immediately and then every 5 seconds
+        testBackend();
+        setInterval(testBackend, 5000);
+    </script>
+</body>
+
+</html>

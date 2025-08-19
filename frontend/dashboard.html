@@ -36,6 +36,203 @@
             }
         }
     </script>
+    <style>
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            display: none;
+        }
+
+        .message.success {
+            background-color: #10b981;
+        }
+
+        .message.error {
+            background-color: #ef4444;
+        }
+
+        .task-item {
+            background: rgba(26, 26, 27, 0.8);
+            border-radius: 8px;
+            padding: 16px;
+            border-left: 4px solid #6366f1;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            background: rgba(26, 26, 27, 1);
+        }
+
+        .task-item.completed {
+            opacity: 0.7;
+            border-left-color: #10b981;
+        }
+
+        .task-content h4 {
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .task-content p {
+            margin: 0 0 12px 0;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .task-meta span {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .priority-high {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .priority-medium {
+            background-color: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .priority-low {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .notification-item {
+            background: rgba(26, 26, 27, 0.8);
+            border-radius: 8px;
+            padding: 12px;
+            border-left: 4px solid #6366f1;
+        }
+
+        .notification-item.task {
+            border-left-color: #10b981;
+        }
+
+        .notification-item.reminder {
+            border-left-color: #f59e0b;
+        }
+
+        .notification-item.deadline {
+            border-left-color: #ef4444;
+        }
+
+        .chart-bars {
+            display: flex;
+            justify-content: space-between;
+            align-items: end;
+            height: 100px;
+            gap: 8px;
+        }
+
+        .chart-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .bar {
+            background: linear-gradient(to top, #6366f1, #8b5cf6);
+            width: 100%;
+            min-height: 4px;
+            border-radius: 2px;
+            margin-bottom: 8px;
+        }
+
+        .day-label {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .no-tasks,
+        .no-notifications {
+            text-align: center;
+            color: #6b7280;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .btn-primary {
+            background-color: #6366f1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #5856eb;
+        }
+
+        .btn-secondary {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #6b7280;
+            color: #6b7280;
+        }
+
+        .btn-outline:hover {
+            background-color: #6b7280;
+            color: white;
+        }
+
+        .task-actions {
+            margin-top: 12px;
+        }
+
+        .notification-content h5 {
+            margin: 0 0 4px 0;
+            font-weight: 600;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .notification-content p {
+            margin: 0 0 8px 0;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+
+        .notification-content small {
+            color: #6b7280;
+            font-size: 11px;
+        }
+    </style>
 </head>
 
 <body class="font-inter bg-dark-bg text-gray-100">
@@ -69,9 +266,9 @@
                     </button>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
-                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=JS" alt="Profile"
+                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
                                 class="w-8 h-8 rounded-full">
-                            <span class="hidden md:block">John Student</span>
+                            <span class="hidden md:block" id="userDisplayName">User</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
                         <div
@@ -81,7 +278,8 @@
                             <a href="#"
                                 class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Preferences</a>
                             <hr class="border-dark-border">
-                            <a href="login.html" class="block px-4 py-2 text-red-400 hover:bg-gray-800">Logout</a>
+                            <button id="logoutBtn"
+                                class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">Logout</button>
                         </div>
                     </div>
                 </div>
@@ -105,7 +303,7 @@
     <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
         <!-- Welcome Section -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold mb-2">Welcome back, John! 👋</h1>
+            <h1 class="text-3xl font-bold mb-2">Welcome back, <span id="userName">User</span>! 👋</h1>
             <p class="text-gray-400">Here's what's happening with your academic schedule today.</p>
         </div>
 
@@ -114,11 +312,11 @@
             <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm">Tasks Due Today</p>
-                        <p class="text-2xl font-bold text-red-400">5</p>
+                        <p class="text-gray-400 text-sm">Total Tasks</p>
+                        <p class="text-2xl font-bold text-blue-400" id="totalTasks">0</p>
                     </div>
-                    <div class="bg-red-500/20 p-3 rounded-lg">
-                        <i class="fas fa-exclamation-triangle text-red-400 text-xl"></i>
+                    <div class="bg-blue-500/20 p-3 rounded-lg">
+                        <i class="fas fa-tasks text-blue-400 text-xl"></i>
                     </div>
                 </div>
             </div>
@@ -126,7 +324,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Completed Tasks</p>
-                        <p class="text-2xl font-bold text-green-400">12</p>
+                        <p class="text-2xl font-bold text-green-400" id="completedTasks">0</p>
                     </div>
                     <div class="bg-green-500/20 p-3 rounded-lg">
                         <i class="fas fa-check-circle text-green-400 text-xl"></i>
@@ -136,11 +334,11 @@
             <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm">Study Hours</p>
-                        <p class="text-2xl font-bold text-blue-400">6.5</p>
+                        <p class="text-gray-400 text-sm">Pomodoro Sessions</p>
+                        <p class="text-2xl font-bold text-red-400" id="pomodoroSessions">0</p>
                     </div>
-                    <div class="bg-blue-500/20 p-3 rounded-lg">
-                        <i class="fas fa-clock text-blue-400 text-xl"></i>
+                    <div class="bg-red-500/20 p-3 rounded-lg">
+                        <i class="fas fa-clock text-red-400 text-xl"></i>
                     </div>
                 </div>
             </div>
@@ -148,7 +346,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Productivity</p>
-                        <p class="text-2xl font-bold text-purple-400">85%</p>
+                        <p class="text-2xl font-bold text-purple-400" id="productivityScore">0%</p>
                     </div>
                     <div class="bg-purple-500/20 p-3 rounded-lg">
                         <i class="fas fa-chart-line text-purple-400 text-xl"></i>
@@ -169,18 +367,17 @@
                     </h2>
                     <form id="quickTaskForm" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="text" placeholder="Task title..."
+                            <input type="text" id="quickTaskTitle" placeholder="Task title..."
                                 class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                            <select
+                            <select id="quickTaskPriority"
                                 class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                <option value="">Select Priority</option>
-                                <option value="high">High Priority</option>
                                 <option value="medium">Medium Priority</option>
+                                <option value="high">High Priority</option>
                                 <option value="low">Low Priority</option>
                             </select>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="datetime-local"
+                            <input type="datetime-local" id="quickTaskDueDate"
                                 class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                             <button type="submit"
                                 class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all">
@@ -195,40 +392,13 @@
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-xl font-semibold flex items-center">
                             <i class="fas fa-calendar-day text-indigo-400 mr-2"></i>
-                            Today's Schedule
+                            Today's Tasks
                         </h2>
-                        <a href="schedule.html" class="text-indigo-400 hover:text-indigo-300 text-sm">View All</a>
+                        <a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-sm">View All</a>
                     </div>
-                    <div class="space-y-4">
-                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-red-500">
-                            <div class="flex-1">
-                                <h3 class="font-medium text-red-400">Math Assignment Due</h3>
-                                <p class="text-gray-400 text-sm">Calculus Chapter 5 Problems</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-red-400 font-medium">11:59 PM</p>
-                                <p class="text-gray-400 text-sm">High Priority</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-blue-500">
-                            <div class="flex-1">
-                                <h3 class="font-medium text-blue-400">Study Session</h3>
-                                <p class="text-gray-400 text-sm">Physics - Quantum Mechanics</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-blue-400 font-medium">2:00 PM</p>
-                                <p class="text-gray-400 text-sm">2 hours</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center p-4 bg-dark-bg rounded-lg border-l-4 border-green-500">
-                            <div class="flex-1">
-                                <h3 class="font-medium text-green-400">Group Meeting</h3>
-                                <p class="text-gray-400 text-sm">CS Project Discussion</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-green-400 font-medium">5:30 PM</p>
-                                <p class="text-gray-400 text-sm">1 hour</p>
-                            </div>
+                    <div id="todayTasksList" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading tasks...
                         </div>
                     </div>
                 </div>
@@ -273,6 +443,32 @@
 
             <!-- Right Column -->
             <div class="space-y-8">
+                <!-- Notifications -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-bell text-indigo-400 mr-2"></i>
+                        Notifications
+                    </h2>
+                    <div id="notificationsList" class="space-y-3">
+                        <div class="text-center text-gray-400 py-4">
+                            Loading notifications...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Tasks -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-calendar-alt text-indigo-400 mr-2"></i>
+                        Upcoming Tasks
+                    </h2>
+                    <div id="upcomingTasksList" class="space-y-3">
+                        <div class="text-center text-gray-400 py-4">
+                            Loading upcoming tasks...
+                        </div>
+                    </div>
+                </div>
+
                 <!-- AI Scheduler Recommendations -->
                 <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
                     <h2 class="text-xl font-semibold mb-4 flex items-center">

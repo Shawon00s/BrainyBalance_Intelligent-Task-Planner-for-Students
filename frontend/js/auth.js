@@ -1,197 +1,367 @@
 // Authentication JavaScript
+const API_BASE_URL = 'http://localhost:3000/api';
+
+// Utility function to get token from localStorage
+function getToken() {
+    return localStorage.getItem('authToken');
+}
+
+// Utility function to set token in localStorage
+function setToken(token) {
+    localStorage.setItem('authToken', token);
+}
+
+// Utility function to remove token from localStorage
+function removeToken() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+}
+
+// Utility function to get user from localStorage
+function getUser() {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+}
+
+// Utility function to set user in localStorage
+function setUser(user) {
+    localStorage.setItem('user', JSON.stringify(user));
+}
+
+// API call function with authentication
+async function apiCall(endpoint, options = {}) {
+    const token = getToken();
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+    };
+
+    const finalOptions = {
+        ...defaultOptions,
+        ...options,
+        headers: {
+            ...defaultOptions.headers,
+            ...options.headers
+        }
+    };
+
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, finalOptions);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('API call error:', error);
+        throw error;
+    }
+}
+
+// Check if user is authenticated
+function isAuthenticated() {
+    const token = getToken();
+    const user = getUser();
+
+    // Basic check - both token and user must exist
+    if (!token || !user) {
+        return false;
+    }
+
+    // Additional check - token should not be expired (basic validation)
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Date.now() / 1000;
+        if (payload.exp && payload.exp < now) {
+            // Token is expired
+            removeToken();
+            return false;
+        }
+    } catch (error) {
+        // Invalid token format
+        removeToken();
+        return false;
+    }
+
+    return true;
+}
+
+// Redirect to login if not authenticated
+function requireAuth() {
+    if (!isAuthenticated()) {
+        console.log('Authentication required, redirecting to login...');
+        // Add a small delay to prevent immediate redirects
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 100);
+        return false;
+    }
+    return true;
+}
+
+// Logout function
+function logout() {
+    removeToken();
+    window.location.href = '/login.html';
+}
+
+// Display user info in navigation
+function displayUserInfo() {
+    const user = getUser();
+    if (user) {
+        const userNameElements = document.querySelectorAll('.user-name');
+        const userEmailElements = document.querySelectorAll('.user-email');
+
+        userNameElements.forEach(el => el.textContent = user.name);
+        userEmailElements.forEach(el => el.textContent = user.email);
+    }
+}
+
+// Login function
+async function loginUser(email, password) {
+    try {
+        const data = await apiCall('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+
+        setToken(data.token);
+        setUser(data.user);
+
+        showNotification('Login successful!', 'success');
+
+        // Only redirect on successful login
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1500);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+        console.error('Login error:', error);
+    }
+}
+
+// Register function
+async function registerUser(userData) {
+    try {
+        const data = await apiCall('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(userData)
+        });
+
+        setToken(data.token);
+        setUser(data.user);
+
+        showNotification('Registration successful!', 'success');
+
+        // Only redirect on successful registration
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1500);
+
+    } catch (error) {
+        showNotification(error.message, 'error');
+        console.error('Registration error:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    // Check if we're on a protected page
+    const protectedPages = ['dashboard.html', 'tasks.html', 'schedule.html', 'pomodoro.html', 'analytics.html'];
+    const currentPage = window.location.pathname.split('/').pop();
+
+    // Only check authentication for protected pages
+    if (protectedPages.includes(currentPage)) {
+        if (!requireAuth()) {
+            return;
+        }
+        // Display user info if authenticated
+        displayUserInfo();
+    }
+
+    // REMOVED: Automatic redirect from login page
+    // This was causing the unwanted page changes
+
+    // Clear any invalid tokens on login page
+    if (currentPage === 'login.html') {
+        // Check if current auth is valid, if not, clear it
+        if (!isAuthenticated()) {
+            removeToken(); // Clean up any invalid tokens
+        }
+    }
+
     // Tab switching
     const loginTab = document.getElementById('loginTab');
     const registerTab = document.getElementById('registerTab');
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
 
-    loginTab.addEventListener('click', function () {
-        loginTab.classList.add('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
-        loginTab.classList.remove('text-gray-400');
-        registerTab.classList.remove('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
-        registerTab.classList.add('text-gray-400');
+    if (loginTab && registerTab && loginForm && registerForm) {
+        loginTab.addEventListener('click', function () {
+            loginTab.classList.add('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
+            loginTab.classList.remove('text-gray-400');
+            registerTab.classList.remove('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
+            registerTab.classList.add('text-gray-400');
 
-        loginForm.classList.remove('hidden');
-        registerForm.classList.add('hidden');
-    });
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+        });
 
-    registerTab.addEventListener('click', function () {
-        registerTab.classList.add('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
-        registerTab.classList.remove('text-gray-400');
-        loginTab.classList.remove('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
-        loginTab.classList.add('text-gray-400');
+        registerTab.addEventListener('click', function () {
+            registerTab.classList.add('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
+            registerTab.classList.remove('text-gray-400');
+            loginTab.classList.remove('bg-gradient-to-r', 'from-indigo-500', 'to-purple-600', 'text-white');
+            loginTab.classList.add('text-gray-400');
 
-        registerForm.classList.remove('hidden');
-        loginForm.classList.add('hidden');
-    });
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+        });
+    }
 
     // Password visibility toggle
     const toggleLoginPassword = document.getElementById('toggleLoginPassword');
     const loginPassword = document.getElementById('loginPassword');
 
-    toggleLoginPassword.addEventListener('click', function () {
-        const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
-        loginPassword.setAttribute('type', type);
+    if (toggleLoginPassword && loginPassword) {
+        toggleLoginPassword.addEventListener('click', function () {
+            const type = loginPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            loginPassword.setAttribute('type', type);
 
-        const icon = this.querySelector('i');
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
-    });
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
 
     const toggleRegisterPassword = document.getElementById('toggleRegisterPassword');
     const registerPassword = document.getElementById('registerPassword');
 
-    toggleRegisterPassword.addEventListener('click', function () {
-        const type = registerPassword.getAttribute('type') === 'password' ? 'text' : 'password';
-        registerPassword.setAttribute('type', type);
+    if (toggleRegisterPassword && registerPassword) {
+        toggleRegisterPassword.addEventListener('click', function () {
+            const type = registerPassword.getAttribute('type') === 'password' ? 'text' : 'password';
+            registerPassword.setAttribute('type', type);
 
-        const icon = this.querySelector('i');
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
-    });
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
 
-    // Form validation and submission
-    loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();
+    // Form submission handlers
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
 
-        // Basic validation
-        if (!email || !password) {
-            showNotification('Please fill in all fields', 'error');
-            return;
-        }
+            // Basic validation
+            if (!email || !password) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
 
-        // Simulate login process
-        showNotification('Logging in...', 'info');
+            showNotification('Logging in...', 'info');
+            await loginUser(email, password);
+        });
+    }
 
-        setTimeout(() => {
-            // Store user session (in real app, this would be handled by backend)
-            localStorage.setItem('userLoggedIn', 'true');
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userName', 'John Student');
+    if (registerForm) {
+        registerForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
 
-            showNotification('Login successful!', 'success');
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const terms = document.getElementById('terms').checked;
 
-            // Redirect to dashboard
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1000);
-        }, 1500);
-    });
+            // Validation
+            if (!firstName || !lastName || !email || !password || !confirmPassword) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
 
-    registerForm.addEventListener('submit', function (e) {
-        e.preventDefault();
+            if (password !== confirmPassword) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
 
-        const firstName = document.getElementById('firstName').value;
-        const lastName = document.getElementById('lastName').value;
-        const email = document.getElementById('registerEmail').value;
-        const university = document.getElementById('university').value;
-        const password = document.getElementById('registerPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const terms = document.getElementById('terms').checked;
+            if (password.length < 6) {
+                showNotification('Password must be at least 6 characters', 'error');
+                return;
+            }
 
-        // Validation
-        if (!firstName || !lastName || !email || !university || !password || !confirmPassword) {
-            showNotification('Please fill in all fields', 'error');
-            return;
-        }
+            if (!terms) {
+                showNotification('Please agree to the terms and conditions', 'error');
+                return;
+            }
 
-        if (password !== confirmPassword) {
-            showNotification('Passwords do not match', 'error');
-            return;
-        }
+            showNotification('Creating account...', 'info');
 
-        if (password.length < 8) {
-            showNotification('Password must be at least 8 characters long', 'error');
-            return;
-        }
+            await registerUser({
+                name: `${firstName} ${lastName}`,
+                email,
+                password
+            });
+        });
+    }
 
-        if (!terms) {
-            showNotification('Please accept the terms and conditions', 'error');
-            return;
-        }
-
-        // Simulate registration process
-        showNotification('Creating account...', 'info');
-
-        setTimeout(() => {
-            // Store user session
-            localStorage.setItem('userLoggedIn', 'true');
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userName', `${firstName} ${lastName}`);
-            localStorage.setItem('userUniversity', university);
-
-            showNotification('Account created successfully!', 'success');
-
-            // Redirect to dashboard
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1000);
-        }, 2000);
-    });
-
-    // Password strength indicator
-    const registerPasswordInput = document.getElementById('registerPassword');
-    registerPasswordInput.addEventListener('input', function () {
-        const password = this.value;
-        // You can add password strength validation here
+    // Logout button handler
+    const logoutBtns = document.querySelectorAll('.logout-btn');
+    logoutBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
     });
 });
 
-// Utility function to show notifications
-function showNotification(message, type) {
-    // Create notification element
+// Notification function
+function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
-    notification.className = `fixed top-20 right-4 px-6 py-4 rounded-lg shadow-lg transform translate-x-full transition-transform z-50 ${getNotificationClass(type)}`;
-
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${getNotificationClass(type)}`;
     notification.innerHTML = `
-        <div class="flex items-center space-x-3">
-            <i class="fas ${getNotificationIcon(type)} text-xl"></i>
-            <div class="font-medium">${message}</div>
+        <div class="flex items-center">
+            <span class="mr-2">${getNotificationIcon(type)}</span>
+            <span>${message}</span>
         </div>
     `;
 
     document.body.appendChild(notification);
 
-    // Show notification
     setTimeout(() => {
-        notification.classList.remove('translate-x-full');
-    }, 100);
-
-    // Hide notification after 3 seconds
-    setTimeout(() => {
-        notification.classList.add('translate-x-full');
-        setTimeout(() => {
-            document.body.removeChild(notification);
-        }, 300);
-    }, 3000);
+        notification.remove();
+    }, 5000);
 }
 
 function getNotificationClass(type) {
     switch (type) {
         case 'success':
-            return 'bg-gradient-to-r from-green-500 to-emerald-600 text-white';
+            return 'bg-green-500 text-white';
         case 'error':
-            return 'bg-gradient-to-r from-red-500 to-pink-600 text-white';
-        case 'info':
-            return 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white';
+            return 'bg-red-500 text-white';
+        case 'warning':
+            return 'bg-yellow-500 text-white';
         default:
-            return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white';
+            return 'bg-blue-500 text-white';
     }
 }
 
 function getNotificationIcon(type) {
     switch (type) {
         case 'success':
-            return 'fa-check-circle';
+            return '✓';
         case 'error':
-            return 'fa-exclamation-circle';
-        case 'info':
-            return 'fa-info-circle';
+            return '✗';
+        case 'warning':
+            return '⚠';
         default:
-            return 'fa-bell';
+            return 'ℹ';
     }
 }
