@@ -9,11 +9,13 @@ function getToken() {
 // Utility function to set token in localStorage
 function setToken(token) {
     localStorage.setItem('authToken', token);
+    localStorage.setItem('token', token); // For dashboard.js compatibility
 }
 
 // Utility function to remove token from localStorage
 function removeToken() {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('token'); // Remove both keys
     localStorage.removeItem('user');
 }
 
@@ -106,7 +108,7 @@ function requireAuth() {
 // Logout function
 function logout() {
     removeToken();
-    window.location.href = '/login.html';
+    window.location.href = 'login.html';
 }
 
 // Display user info in navigation

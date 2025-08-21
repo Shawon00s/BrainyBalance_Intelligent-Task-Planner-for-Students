@@ -1,7 +1,8 @@
 // Pomodoro Timer JavaScript
 document.addEventListener('DOMContentLoaded', function () {
-    // Check if user is logged in
-    if (!localStorage.getItem('userLoggedIn')) {
+    // Check if user is logged in (check for auth tokens)
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    if (!token) {
         window.location.href = 'login.html';
         return;
     }

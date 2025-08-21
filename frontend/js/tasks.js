@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function initializeTasksPage() {
     displayUserInfo();
-    
+
     // Set up date inputs with default values
     const dueDateInput = document.getElementById('dueDate');
     if (dueDateInput) {
@@ -35,6 +35,18 @@ function setupEventListeners() {
         addTaskForm.addEventListener('submit', handleAddTask);
     }
 
+    // Add task button
+    const addTaskBtn = document.getElementById('addTaskBtn');
+    if (addTaskBtn) {
+        addTaskBtn.addEventListener('click', openAddTaskModal);
+    }
+
+    // Close modal button
+    const closeModal = document.getElementById('closeModal');
+    if (closeModal) {
+        closeModal.addEventListener('click', closeAddTaskModal);
+    }
+
     // Filter buttons
     const filterButtons = document.querySelectorAll('.filter-btn');
     filterButtons.forEach(btn => {
@@ -43,6 +55,21 @@ function setupEventListeners() {
             setFilter(filter);
         });
     });
+
+    // Filter dropdowns
+    const priorityFilter = document.getElementById('priorityFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    if (priorityFilter) {
+        priorityFilter.addEventListener('change', handleFilterChange);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', handleFilterChange);
+    }
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', handleFilterChange);
+    }
 
     // Sort dropdown
     const sortSelect = document.getElementById('sortTasks');
@@ -88,7 +115,7 @@ async function loadTasks() {
 
 async function handleAddTask(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
     const taskData = {
         title: formData.get('title'),
@@ -117,12 +144,12 @@ async function handleAddTask(e) {
         tasks.unshift(response.task);
         displayTasks();
         updateTaskStats();
-        
+
         // Reset form and close modal
         e.target.reset();
         const modal = document.getElementById('addTaskModal');
         if (modal) modal.classList.add('hidden');
-        
+
         showNotification('Task created successfully!', 'success');
         hideLoading();
     } catch (error) {
@@ -181,8 +208,69 @@ async function toggleTaskStatus(taskId) {
     await updateTask(taskId, { status: newStatus });
 }
 
+function handleFilterChange() {
+    displayTasks();
+}
+
+function handleSearch() {
+    displayTasks();
+}
+
+function filterTasks(tasks) {
+    let filtered = [...tasks];
+
+    // Search filter
+    const searchInput = document.getElementById('searchTasks');
+    if (searchInput && searchInput.value.trim()) {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        filtered = filtered.filter(task =>
+            task.title.toLowerCase().includes(searchTerm) ||
+            task.description.toLowerCase().includes(searchTerm) ||
+            (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+        );
+    }
+
+    // Priority filter
+    const priorityFilter = document.getElementById('priorityFilter');
+    if (priorityFilter && priorityFilter.value) {
+        filtered = filtered.filter(task => task.priority === priorityFilter.value);
+    }
+
+    // Status filter
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter && statusFilter.value) {
+        filtered = filtered.filter(task => task.status === statusFilter.value);
+    }
+
+    // Category filter
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (categoryFilter && categoryFilter.value) {
+        filtered = filtered.filter(task => task.category === categoryFilter.value);
+    }
+
+    // Current filter (if using filter buttons)
+    if (currentFilter !== 'all') {
+        switch (currentFilter) {
+            case 'pending':
+                filtered = filtered.filter(task => task.status === 'pending');
+                break;
+            case 'completed':
+                filtered = filtered.filter(task => task.status === 'completed');
+                break;
+            case 'overdue':
+                const now = new Date();
+                filtered = filtered.filter(task =>
+                    task.status !== 'completed' && new Date(task.deadline) < now
+                );
+                break;
+        }
+    }
+
+    return filtered;
+}
+
 function displayTasks() {
-    const container = document.getElementById('tasksContainer');
+    const container = document.getElementById('taskList');
     if (!container) return;
 
     let filteredTasks = filterTasks(tasks);
@@ -192,8 +280,8 @@ function displayTasks() {
         container.innerHTML = `
             <div class="text-center py-12">
                 <div class="text-gray-400 text-6xl mb-4">📝</div>
-                <h3 class="text-xl font-semibold text-gray-600 mb-2">No tasks found</h3>
-                <p class="text-gray-500 mb-4">${currentFilter === 'all' ? 'Create your first task to get started!' : 'No tasks match your current filter.'}</p>
+                <h3 class="text-xl font-semibold text-gray-300 mb-2">No tasks found</h3>
+                <p class="text-gray-400 mb-4">${currentFilter === 'all' ? 'Create your first task to get started!' : 'No tasks match your current filter.'}</p>
                 <button onclick="openAddTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors">
                     Add New Task
                 </button>
@@ -208,61 +296,40 @@ function displayTasks() {
 function createTaskCard(task) {
     const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
     const timeLeft = getTimeLeft(task.deadline);
-    
+
     return `
-        <div class="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6 border-l-4 ${getBorderColor(task.priority)}">
-            <div class="flex items-start justify-between mb-4">
-                <div class="flex items-start space-x-3">
+        <div class="p-6 hover:bg-dark-bg/50 transition-colors border-b border-dark-border">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
                     <input type="checkbox" 
                            ${task.status === 'completed' ? 'checked' : ''} 
                            onchange="toggleTaskStatus('${task._id}')"
-                           class="mt-1 h-5 w-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                           class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
                     <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-800 ${task.status === 'completed' ? 'line-through text-gray-500' : ''}">${task.title}</h3>
-                        ${task.description ? `<p class="text-gray-600 mt-1">${task.description}</p>` : ''}
+                        <h3 class="font-medium text-white mb-1 ${task.status === 'completed' ? 'line-through text-gray-500' : ''}">${task.title}</h3>
+                        ${task.description ? `<p class="text-gray-400 text-sm mb-2">${task.description}</p>` : ''}
+                        <div class="flex items-center space-x-4 text-xs">
+                            <span class="px-2 py-1 rounded-full ${getPriorityBadgeColor(task.priority)}">
+                                ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                            </span>
+                            <span class="px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
+                                ${task.category.charAt(0).toUpperCase() + task.category.slice(1)}
+                            </span>
+                            <span class="text-gray-400 ${isOverdue ? 'text-red-400' : ''}">
+                                <i class="fas fa-clock mr-1"></i>Due: ${formatDeadline(task.deadline)}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
-                    <button onclick="editTask('${task._id}')" class="text-blue-600 hover:text-blue-800 p-1">
+                    <button onclick="editTask('${task._id}')" class="text-gray-400 hover:text-blue-400 p-2">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTask('${task._id}')" class="text-red-600 hover:text-red-800 p-1">
+                    <button onclick="deleteTask('${task._id}')" class="text-gray-400 hover:text-red-400 p-2">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
-            
-            <div class="flex items-center justify-between text-sm">
-                <div class="flex items-center space-x-4">
-                    <span class="px-2 py-1 bg-gray-100 rounded text-gray-700">
-                        <i class="fas fa-tag mr-1"></i>${task.category}
-                    </span>
-                    <span class="px-2 py-1 ${getPriorityColor(task.priority)} rounded text-white">
-                        ${task.priority.toUpperCase()}
-                    </span>
-                    ${task.estimatedTime ? `
-                        <span class="text-gray-500">
-                            <i class="fas fa-clock mr-1"></i>${task.estimatedTime}min
-                        </span>
-                    ` : ''}
-                </div>
-                <div class="text-right">
-                    <div class="text-gray-600">
-                        <i class="fas fa-calendar mr-1"></i>
-                        ${new Date(task.deadline).toLocaleDateString()}
-                    </div>
-                    ${isOverdue && task.status !== 'completed' ? 
-                        `<div class="text-red-600 font-semibold">Overdue</div>` :
-                        `<div class="text-gray-500">${timeLeft}</div>`
-                    }
-                </div>
-            </div>
-            
-            ${task.tags && task.tags.length > 0 ? `
-                <div class="mt-3 flex flex-wrap gap-1">
-                    ${task.tags.map(tag => `<span class="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs">${tag}</span>`).join('')}
-                </div>
-            ` : ''}
         </div>
     `;
 }
@@ -274,12 +341,12 @@ function filterTasks(taskList) {
         case 'completed':
             return taskList.filter(task => task.status === 'completed');
         case 'overdue':
-            return taskList.filter(task => 
+            return taskList.filter(task =>
                 new Date(task.deadline) < new Date() && task.status !== 'completed'
             );
         case 'today':
             const today = new Date().toDateString();
-            return taskList.filter(task => 
+            return taskList.filter(task =>
                 new Date(task.deadline).toDateString() === today
             );
         default:
@@ -307,38 +374,38 @@ function sortTasks(taskList) {
 
 function setFilter(filter) {
     currentFilter = filter;
-    
+
     // Update filter button styles
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('bg-indigo-600', 'text-white');
         btn.classList.add('bg-gray-200', 'text-gray-700');
     });
-    
+
     const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
     if (activeBtn) {
         activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
         activeBtn.classList.add('bg-indigo-600', 'text-white');
     }
-    
+
     displayTasks();
 }
 
 function handleSearch(e) {
     const searchTerm = e.target.value.toLowerCase();
     const container = document.getElementById('tasksContainer');
-    
+
     if (!searchTerm) {
         displayTasks();
         return;
     }
-    
-    const filteredTasks = tasks.filter(task => 
+
+    const filteredTasks = tasks.filter(task =>
         task.title.toLowerCase().includes(searchTerm) ||
         task.description.toLowerCase().includes(searchTerm) ||
         task.category.toLowerCase().includes(searchTerm) ||
         (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
     );
-    
+
     container.innerHTML = filteredTasks.map(task => createTaskCard(task)).join('');
 }
 
@@ -346,10 +413,10 @@ function updateTaskStats() {
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.status === 'completed').length;
     const pendingTasks = tasks.filter(task => task.status === 'pending').length;
-    const overdueTasks = tasks.filter(task => 
+    const overdueTasks = tasks.filter(task =>
         new Date(task.deadline) < new Date() && task.status !== 'completed'
     ).length;
-    
+
     // Update stats in UI
     const statsElements = {
         'totalTasks': totalTasks,
@@ -357,12 +424,12 @@ function updateTaskStats() {
         'pendingTasks': pendingTasks,
         'overdueTasks': overdueTasks
     };
-    
+
     Object.entries(statsElements).forEach(([id, value]) => {
         const element = document.getElementById(id);
         if (element) element.textContent = value;
     });
-    
+
     // Update progress bar
     const progressBar = document.getElementById('progressBar');
     const progressPercent = document.getElementById('progressPercent');
@@ -392,7 +459,7 @@ function closeAddTaskModal() {
 function editTask(taskId) {
     const task = tasks.find(t => t._id === taskId);
     if (!task) return;
-    
+
     // For now, let's use a simple prompt. In a real app, you'd use a proper modal
     const newTitle = prompt('Edit task title:', task.title);
     if (newTitle && newTitle !== task.title) {
@@ -404,12 +471,12 @@ function exportTasks() {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `tasks_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
-    
+
     URL.revokeObjectURL(url);
     showNotification('Tasks exported successfully!', 'success');
 }
@@ -435,16 +502,40 @@ function getPriorityColor(priority) {
     }
 }
 
+function getPriorityBadgeColor(priority) {
+    switch (priority) {
+        case 'high': return 'bg-red-500/20 text-red-400';
+        case 'medium': return 'bg-yellow-500/20 text-yellow-400';
+        case 'low': return 'bg-green-500/20 text-green-400';
+        default: return 'bg-gray-500/20 text-gray-400';
+    }
+}
+
+function formatDeadline(deadline) {
+    const date = new Date(deadline);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) {
+        return 'Today, ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+        return 'Tomorrow, ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+        return date.toLocaleDateString() + ', ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
 function getTimeLeft(deadline) {
     const now = new Date();
     const due = new Date(deadline);
     const diffMs = due - now;
-    
+
     if (diffMs < 0) return 'Overdue';
-    
+
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} left`;
     if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} left`;
     return 'Due soon';
@@ -466,14 +557,14 @@ function hideLoading() {
 }
 
 // Modal event listeners
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     const modal = document.getElementById('addTaskModal');
     if (e.target === modal) {
         closeAddTaskModal();
     }
 });
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closeAddTaskModal();
     }

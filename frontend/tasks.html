@@ -76,12 +76,18 @@
                         </button>
                         <div
                             class="absolute right-0 top-full mt-2 w-48 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Profile
-                                Settings</a>
-                            <a href="#"
-                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">Preferences</a>
+                            <a href="profile.html"
+                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                                <i class="fas fa-user mr-2"></i>Profile Settings
+                            </a>
+                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                                <i class="fas fa-cog mr-2"></i>Preferences
+                            </a>
                             <hr class="border-dark-border">
-                            <a href="login.html" class="block px-4 py-2 text-red-400 hover:bg-gray-800">Logout</a>
+                            <a href="#" onclick="logout(); return false;"
+                                class="block px-4 py-2 text-red-400 hover:bg-gray-800 logout-btn">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -404,7 +410,15 @@
         </div>
     </div>
 
+    <script src="js/auth.js"></script>
     <script src="js/tasks.js"></script>
+    <script>
+        // Initialize auth system for this page
+        document.addEventListener('DOMContentLoaded', function () {
+            // Make logout function globally available
+            window.logout = logout;
+        });
+    </script>
 </body>
 
 </html>

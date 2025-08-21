@@ -6,23 +6,6 @@ import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Debug route to check users (REMOVE IN PRODUCTION)
-router.get('/test-users', async (req, res) => {
-    try {
-        const users = await User.find({}, 'name email createdAt').limit(10);
-        res.json({
-            count: users.length,
-            users: users.map(user => ({
-                name: user.name,
-                email: user.email,
-                createdAt: user.createdAt
-            }))
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // Register user
 router.post("/register", async (req, res) => {
     try {
