@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize Pomodoro timer
     initializePomodoroTimer();
     setupEventListeners();
+    loadUserProfile(); // Load user profile
     loadSettings();
     loadTodayStats();
     loadSessionHistory();

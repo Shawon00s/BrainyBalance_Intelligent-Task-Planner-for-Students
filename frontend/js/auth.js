@@ -115,10 +115,11 @@ function logout() {
 function displayUserInfo() {
     const user = getUser();
     if (user) {
-        const userNameElements = document.querySelectorAll('.user-name');
-        const userEmailElements = document.querySelectorAll('.user-email');
+        // Use updateUserDisplay for consistent handling
+        updateUserDisplay(user);
 
-        userNameElements.forEach(el => el.textContent = user.name);
+        // Update email elements separately
+        const userEmailElements = document.querySelectorAll('.user-email');
         userEmailElements.forEach(el => el.textContent = user.email);
     }
 }
@@ -366,4 +367,125 @@ function getNotificationIcon(type) {
         default:
             return 'ℹ';
     }
+}
+
+// Load user profile and update UI
+async function loadUserProfile() {
+    try {
+        const response = await apiCall('/auth/profile');
+        if (response.user) {
+            setUser(response.user);
+            updateUserDisplay(response.user);
+            return response.user;
+        }
+    } catch (error) {
+        console.error('Failed to load user profile:', error);
+    }
+    return null;
+}
+
+// Update user display in navigation
+function updateUserDisplay(user) {
+    if (!user) return;
+
+    console.log('Updating user display for:', user.name); // Debug log
+
+    // Get first name from full name
+    const firstName = user.name ? user.name.split(' ')[0] : 'User';
+
+    // Update user name displays
+    const userNameElements = document.querySelectorAll('.user-name');
+    console.log('Found user-name elements:', userNameElements.length); // Debug log
+    userNameElements.forEach(element => {
+        element.textContent = firstName;
+        console.log('Updated element text to:', firstName); // Debug log
+    });
+
+    // Generate avatar using DiceBear API
+    const avatarUrl = generateAvatarUrl(user, 'avataaars', 32);
+    console.log('Generated avatar URL:', avatarUrl); // Debug log
+
+    // Update profile images with DiceBear avatars
+    const profileImages = document.querySelectorAll('.profile-image');
+    console.log('Found profile-image elements:', profileImages.length); // Debug log
+    profileImages.forEach(img => {
+        if (img.tagName === 'IMG') {
+            img.src = avatarUrl;
+            img.alt = user.name || 'User';
+            img.onerror = function () {
+                // Fallback to initials if DiceBear fails
+                this.src = `https://via.placeholder.com/32x32/6366f1/ffffff?text=${getUserInitials(user)}`;
+            };
+            console.log('Updated image src to:', avatarUrl); // Debug log
+        }
+    });
+
+    // Update any elements with user initials (as fallback)
+    const userInitials = getUserInitials(user);
+    const initialElements = document.querySelectorAll('.user-initials');
+    initialElements.forEach(element => {
+        element.textContent = userInitials;
+    });
+}
+
+// Helper function to get user initials
+function getUserInitials(user) {
+    if (!user || !user.name) return 'U';
+    return user.name.split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2); // Limit to 2 characters
+}
+
+// Generate avatar URL using DiceBear API
+function generateAvatarUrl(user, style = 'avataaars', size = 32) {
+    if (!user) return `https://via.placeholder.com/${size}x${size}/6366f1/ffffff?text=U`;
+
+    const seed = user.email || user.name || 'default';
+    const availableStyles = [
+        'avataaars',     // Cartoon-style avatars
+        'personas',      // Professional looking avatars  
+        'initials',      // Just initials
+        'identicon',     // Geometric patterns
+        'bottts',        // Robot avatars
+        'shapes'         // Abstract shapes
+    ];
+
+    // Ensure the style is valid
+    const avatarStyle = availableStyles.includes(style) ? style : 'avataaars';
+
+    // Additional customization options
+    const options = {
+        seed: encodeURIComponent(seed),
+        backgroundColor: '6366f1',
+        radius: '50',
+        size: size
+    };
+
+    // Build query string
+    const queryString = Object.entries(options)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&');
+
+    return `https://api.dicebear.com/7.x/${avatarStyle}/svg?${queryString}`;
+}
+
+// Function to change avatar style (can be called from UI)
+function changeAvatarStyle(style) {
+    const user = getUser();
+    if (!user) return;
+
+    const avatarUrl = generateAvatarUrl(user, style);
+    const profileImages = document.querySelectorAll('.profile-image');
+
+    profileImages.forEach(img => {
+        if (img.tagName === 'IMG') {
+            img.src = avatarUrl;
+            img.onerror = function () {
+                // Fallback to initials if DiceBear fails
+                this.src = `https://via.placeholder.com/32x32/6366f1/ffffff?text=${getUserInitials(user)}`;
+            };
+        }
+    });
 }

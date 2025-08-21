@@ -256,6 +256,12 @@
                             class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
                             class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                        <a href="ai-recommendations.html" class="text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fas fa-robot mr-1"></i>AI Recommendations
+                        </a>
+                        <a href="calendar.html" class="text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fab fa-google mr-1"></i>Calendar
+                        </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -267,8 +273,8 @@
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
-                                class="w-8 h-8 rounded-full">
-                            <span class="hidden md:block" id="userDisplayName">User</span>
+                                class="w-8 h-8 rounded-full profile-image">
+                            <span class="hidden md:block user-name">User</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
                         <div
@@ -276,6 +282,10 @@
                             <a href="profile.html"
                                 class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                                 <i class="fas fa-user mr-2"></i>Profile Settings
+                            </a>
+                            <a href="calendar.html"
+                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                                <i class="fab fa-google mr-2"></i>Calendar Integration
                             </a>
                             <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                                 <i class="fas fa-cog mr-2"></i>Preferences
@@ -308,7 +318,7 @@
     <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
         <!-- Welcome Section -->
         <div class="mb-8">
-            <h1 class="text-3xl font-bold mb-2">Welcome back, <span id="userName">User</span>! 👋</h1>
+            <h1 class="text-3xl font-bold mb-2">Welcome back, <span class="user-name">User</span>! 👋</h1>
             <p class="text-gray-400">Here's what's happening with your academic schedule today.</p>
         </div>
 
@@ -364,34 +374,6 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <!-- Left Column -->
             <div class="lg:col-span-2 space-y-8">
-                <!-- Quick Add Task -->
-                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
-                    <h2 class="text-xl font-semibold mb-4 flex items-center">
-                        <i class="fas fa-plus-circle text-indigo-400 mr-2"></i>
-                        Quick Add Task
-                    </h2>
-                    <form id="quickTaskForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="text" id="quickTaskTitle" placeholder="Task title..."
-                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                            <select id="quickTaskPriority"
-                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                                <option value="medium">Medium Priority</option>
-                                <option value="high">High Priority</option>
-                                <option value="low">Low Priority</option>
-                            </select>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input type="datetime-local" id="quickTaskDueDate"
-                                class="bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                            <button type="submit"
-                                class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all">
-                                <i class="fas fa-plus mr-2"></i>Add Task
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
                 <!-- Today's Schedule -->
                 <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
                     <div class="flex items-center justify-between mb-6">
@@ -414,33 +396,9 @@
                         <i class="fas fa-history text-indigo-400 mr-2"></i>
                         Recent Activity
                     </h2>
-                    <div class="space-y-4">
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-green-500/20 p-2 rounded-full">
-                                <i class="fas fa-check text-green-400"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-white">Completed "Chemistry Lab Report"</p>
-                                <p class="text-gray-400 text-sm">2 hours ago</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-blue-500/20 p-2 rounded-full">
-                                <i class="fas fa-plus text-blue-400"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-white">Added "Study for Midterm"</p>
-                                <p class="text-gray-400 text-sm">5 hours ago</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-4">
-                            <div class="bg-purple-500/20 p-2 rounded-full">
-                                <i class="fas fa-clock text-purple-400"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-white">Completed 2 Pomodoro sessions</p>
-                                <p class="text-gray-400 text-sm">Yesterday</p>
-                            </div>
+                    <div id="recentActivityList" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading recent activity...
                         </div>
                     </div>
                 </div>

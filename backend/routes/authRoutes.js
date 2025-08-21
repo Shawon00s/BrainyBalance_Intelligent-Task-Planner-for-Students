@@ -130,6 +130,26 @@ router.get("/me", authMiddleware, async (req, res) => {
     }
 });
 
+// Get user profile
+router.get("/profile", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+
+        res.json({
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                lastLogin: user.lastLogin
+            }
+        });
+    } catch (error) {
+        console.error('Profile fetch error:', error);
+        res.status(500).json({ error: 'Server error fetching profile' });
+    }
+});
+
 // Update user profile
 router.put("/profile", authMiddleware, async (req, res) => {
     try {

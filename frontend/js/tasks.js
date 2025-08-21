@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize tasks page
     initializeTasksPage();
     setupEventListeners();
+    loadUserProfile(); // Load user profile
     loadTasks();
 });
 
@@ -19,12 +20,10 @@ function initializeTasksPage() {
     displayUserInfo();
 
     // Set up date inputs with default values
-    const dueDateInput = document.getElementById('dueDate');
+    const dueDateInput = document.getElementById('dueDatePicker');
     if (dueDateInput) {
-        // Set minimum date to today
-        const today = new Date().toISOString().split('T')[0];
-        dueDateInput.min = today;
-        dueDateInput.value = today;
+        // Date picker will handle minimum date and default values
+        // This is now handled by flatpickr configuration
     }
 }
 
@@ -45,6 +44,12 @@ function setupEventListeners() {
     const closeModal = document.getElementById('closeModal');
     if (closeModal) {
         closeModal.addEventListener('click', closeAddTaskModal);
+    }
+
+    // Cancel task button
+    const cancelTask = document.getElementById('cancelTask');
+    if (cancelTask) {
+        cancelTask.addEventListener('click', closeAddTaskModal);
     }
 
     // Filter buttons
@@ -322,6 +327,11 @@ function createTaskCard(task) {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
+                    <button onclick="syncTaskToCalendar('${task._id}')" 
+                            class="text-gray-400 hover:text-green-400 p-2 sync-task-btn" 
+                            title="Sync to Google Calendar">
+                        <i class="fab fa-google"></i>
+                    </button>
                     <button onclick="editTask('${task._id}')" class="text-gray-400 hover:text-blue-400 p-2">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -413,16 +423,14 @@ function updateTaskStats() {
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.status === 'completed').length;
     const pendingTasks = tasks.filter(task => task.status === 'pending').length;
-    const overdueTasks = tasks.filter(task =>
-        new Date(task.deadline) < new Date() && task.status !== 'completed'
-    ).length;
+    const inProgressTasks = tasks.filter(task => task.status === 'in-progress').length;
 
     // Update stats in UI
     const statsElements = {
-        'totalTasks': totalTasks,
-        'completedTasks': completedTasks,
-        'pendingTasks': pendingTasks,
-        'overdueTasks': overdueTasks
+        'totalTasksCount': totalTasks,
+        'completedTasksCount': completedTasks,
+        'pendingTasksCount': pendingTasks,
+        'inProgressTasksCount': inProgressTasks
     };
 
     Object.entries(statsElements).forEach(([id, value]) => {
@@ -569,3 +577,82 @@ document.addEventListener('keydown', function (e) {
         closeAddTaskModal();
     }
 });
+
+// Google Calendar Integration Functions
+async function syncTaskToCalendar(taskId) {
+    try {
+        // Find the task in the current tasks array
+        const task = tasks.find(t => t._id === taskId);
+        if (!task) {
+            showMessage('Task not found', 'error');
+            return;
+        }
+
+        // Show loading state
+        const syncBtn = document.querySelector(`button[onclick="syncTaskToCalendar('${taskId}')"]`);
+        if (syncBtn) {
+            syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            syncBtn.disabled = true;
+        }
+
+        // Check if Google Calendar is connected
+        const statusResponse = await fetch(`${API_BASE}/calendar/status`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            if (!statusData.connected) {
+                showMessage('Please connect Google Calendar first', 'error');
+                if (syncBtn) {
+                    syncBtn.innerHTML = '<i class="fab fa-google"></i>';
+                    syncBtn.disabled = false;
+                }
+                return;
+            }
+        }
+
+        // Sync the task
+        const response = await fetch(`${API_BASE}/calendar/sync/task/${taskId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ task })
+        });
+
+        if (response.ok) {
+            showMessage('Task synced to Google Calendar successfully!', 'success');
+            // Update button to show synced state
+            if (syncBtn) {
+                syncBtn.innerHTML = '<i class="fas fa-check"></i>';
+                syncBtn.classList.remove('hover:text-green-400');
+                syncBtn.classList.add('text-green-400');
+                syncBtn.title = 'Synced to Google Calendar';
+                setTimeout(() => {
+                    syncBtn.innerHTML = '<i class="fab fa-google"></i>';
+                    syncBtn.disabled = false;
+                }, 2000);
+            }
+        } else {
+            const errorData = await response.json();
+            showMessage(errorData.error || 'Failed to sync task to calendar', 'error');
+            if (syncBtn) {
+                syncBtn.innerHTML = '<i class="fab fa-google"></i>';
+                syncBtn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Error syncing task to calendar:', error);
+        showMessage('Failed to sync task to calendar', 'error');
+        const syncBtn = document.querySelector(`button[onclick="syncTaskToCalendar('${taskId}')"]`);
+        if (syncBtn) {
+            syncBtn.innerHTML = '<i class="fab fa-google"></i>';
+            syncBtn.disabled = false;
+        }
+    }
+}

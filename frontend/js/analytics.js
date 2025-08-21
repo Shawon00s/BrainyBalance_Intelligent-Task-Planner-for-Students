@@ -10,15 +10,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize analytics page
     initializeAnalytics();
     setupEventListeners();
-    loadAnalyticsData();
-    createCharts();
+    loadUserProfile(); // Load user profile
+    loadAnalyticsFromAPI();
 });
 
+// API Configuration
+const API_BASE = 'http://localhost:3000/api';
+let analyticsData = {};
+
 function initializeAnalytics() {
-    // Generate sample analytics data if none exists
-    if (!localStorage.getItem('analyticsData')) {
-        generateSampleAnalyticsData();
-    }
+    console.log('Initializing analytics page...');
+    // No longer using localStorage - will load from API
 }
 
 function generateSampleAnalyticsData() {
@@ -85,25 +87,176 @@ function setupEventListeners() {
     });
 }
 
+// Load analytics data from API
+async function loadAnalyticsFromAPI() {
+    try {
+        console.log('Loading analytics from API...');
+
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+
+        // Load dashboard analytics
+        const dashboardResponse = await fetch(`${API_BASE}/analytics/dashboard?period=week`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Load trends data
+        const trendsResponse = await fetch(`${API_BASE}/analytics/trends?period=week`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Load tasks data for completion metrics
+        const tasksResponse = await fetch(`${API_BASE}/tasks`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (dashboardResponse.ok && trendsResponse.ok && tasksResponse.ok) {
+            const dashboardData = await dashboardResponse.json();
+            const trendsData = await trendsResponse.json();
+            const tasksData = await tasksResponse.json();
+
+            // Process and combine data
+            analyticsData = processApiData(dashboardData, trendsData, tasksData);
+
+            // Update UI
+            updateKeyMetrics(analyticsData);
+            updateAchievements(analyticsData.achievements || []);
+            updateInsights(analyticsData);
+            createCharts();
+
+            console.log('Analytics data loaded successfully:', analyticsData);
+        } else {
+            console.error('Failed to load analytics data');
+            // Use fallback data
+            generateFallbackAnalyticsData();
+        }
+    } catch (error) {
+        console.error('Error loading analytics from API:', error);
+        // Use fallback data
+        generateFallbackAnalyticsData();
+    }
+}
+
+// Process API data into frontend format
+function processApiData(dashboard, trends, tasks) {
+    const allTasks = tasks.tasks || tasks;
+    const completedTasks = allTasks.filter(task => task.status === 'completed');
+    const pendingTasks = allTasks.filter(task => task.status === 'pending');
+    const overdueTasks = allTasks.filter(task => {
+        return task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+    });
+
+    return {
+        studyHours: {
+            daily: trends.dailyData?.map(d => d.totalWorkMinutes / 60) || [2.5, 3.2, 1.8, 4.1, 3.5, 2.9, 1.2],
+            weekly: trends.weeklyData?.map(w => w.totalWorkMinutes / 60) || [18.5, 22.3, 19.8, 24.1, 21.7, 20.5, 23.2],
+            subjects: trends.subjectBreakdown || {
+                'Mathematics': 45,
+                'Physics': 32,
+                'Chemistry': 28,
+                'Computer Science': 38,
+                'Literature': 22
+            }
+        },
+        taskCompletion: {
+            completed: completedTasks.length,
+            pending: pendingTasks.length,
+            overdue: overdueTasks.length,
+            inProgress: allTasks.filter(task => task.status === 'in-progress').length
+        },
+        productivity: {
+            averageGrade: 87.5, // Could be calculated from task ratings
+            productivityScore: dashboard.summary?.averageProductivityScore || 92,
+            focusScore: 85,
+            completionRate: dashboard.summary?.completionRate || 78
+        },
+        summary: dashboard.summary,
+        trends: trends,
+        achievements: generateAchievements(dashboard, allTasks),
+        weeklyActivity: trends.weeklyActivity || generateWeeklyActivity()
+    };
+}
+
+// Generate fallback data when API fails
+function generateFallbackAnalyticsData() {
+    analyticsData = {
+        studyHours: {
+            daily: [2.5, 3.2, 1.8, 4.1, 3.5, 2.9, 1.2],
+            weekly: [18.5, 22.3, 19.8, 24.1, 21.7, 20.5, 23.2],
+            subjects: {
+                'Mathematics': 45,
+                'Physics': 32,
+                'Chemistry': 28,
+                'Computer Science': 38,
+                'Literature': 22
+            }
+        },
+        taskCompletion: {
+            completed: 89,
+            pending: 24,
+            overdue: 8,
+            inProgress: 12
+        },
+        productivity: {
+            averageGrade: 87.5,
+            productivityScore: 92,
+            focusScore: 85,
+            completionRate: 78
+        }
+    };
+
+    updateKeyMetrics(analyticsData);
+    createCharts();
+}
+
+// Legacy function - replaced by loadAnalyticsFromAPI()
 function loadAnalyticsData() {
-    const data = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-
-    // Update key metrics
-    updateKeyMetrics(data);
-
-    // Update achievements
-    updateAchievements(data.achievements || []);
-
-    // Update insights
-    updateInsights(data);
+    console.log('This function has been replaced by loadAnalyticsFromAPI()');
 }
 
 function updateKeyMetrics(data) {
+    // Calculate total study hours from data
+    const totalStudyHours = data.summary?.totalWorkMinutes ?
+        Math.round((data.summary.totalWorkMinutes / 60) * 10) / 10 :
+        (data.studyHours?.daily?.reduce((sum, hours) => sum + hours, 0) || 127.5);
+
     const metrics = [
-        { label: 'Total Study Hours', value: '127.5', change: '+12%', icon: 'clock', color: 'blue' },
-        { label: 'Tasks Completed', value: data.taskCompletion?.completed || '89', change: '+8%', icon: 'check-circle', color: 'green' },
-        { label: 'Average Grade', value: data.productivity?.averageGrade + '%' || '87.5%', change: '+3.2%', icon: 'graduation-cap', color: 'purple' },
-        { label: 'Productivity Score', value: data.productivity?.productivityScore || '92', change: '+5%', icon: 'chart-line', color: 'yellow' }
+        {
+            label: 'Total Study Hours',
+            value: totalStudyHours.toString(),
+            change: '+12%',
+            icon: 'clock',
+            color: 'blue'
+        },
+        {
+            label: 'Tasks Completed',
+            value: (data.taskCompletion?.completed || data.summary?.totalTasksCompleted || '89').toString(),
+            change: '+8%',
+            icon: 'check-circle',
+            color: 'green'
+        },
+        {
+            label: 'Completion Rate',
+            value: (data.productivity?.completionRate || data.summary?.completionRate || '87') + '%',
+            change: '+3.2%',
+            icon: 'graduation-cap',
+            color: 'purple'
+        },
+        {
+            label: 'Productivity Score',
+            value: (data.productivity?.productivityScore || data.summary?.averageProductivityScore || '92').toString(),
+            change: '+5%',
+            icon: 'chart-line',
+            color: 'yellow'
+        }
     ];
 
     const metricCards = document.querySelectorAll('.bg-gradient-card');
@@ -178,6 +331,56 @@ function updateInsights(data) {
     }
 }
 
+// Helper function to generate achievements based on data
+function generateAchievements(dashboard, tasks) {
+    const achievements = [];
+
+    if (dashboard.summary?.totalTasksCompleted >= 50) {
+        achievements.push({
+            title: 'Task Master',
+            description: 'Completed 50+ tasks',
+            value: dashboard.summary.totalTasksCompleted,
+            icon: 'medal',
+            color: 'yellow'
+        });
+    }
+
+    if (dashboard.summary?.completionRate >= 80) {
+        achievements.push({
+            title: 'High Achiever',
+            description: 'Maintained 80%+ completion rate',
+            value: dashboard.summary.completionRate + '%',
+            icon: 'trophy',
+            color: 'blue'
+        });
+    }
+
+    if (dashboard.summary?.totalWorkMinutes >= 3600) { // 60 hours
+        achievements.push({
+            title: 'Study Champion',
+            description: 'Studied for 60+ hours',
+            value: Math.round(dashboard.summary.totalWorkMinutes / 60) + 'h',
+            icon: 'clock',
+            color: 'green'
+        });
+    }
+
+    return achievements;
+}
+
+// Helper function to generate weekly activity heatmap data
+function generateWeeklyActivity() {
+    return [
+        [3, 2, 1, 4, 2, 0, 0], // Monday
+        [2, 3, 2, 3, 1, 2, 0], // Tuesday
+        [1, 2, 4, 2, 3, 1, 1], // Wednesday
+        [0, 1, 3, 4, 2, 2, 0], // Thursday
+        [1, 2, 2, 3, 4, 1, 0], // Friday
+        [0, 0, 1, 1, 2, 3, 2], // Saturday
+        [0, 0, 0, 1, 1, 2, 1]  // Sunday
+    ];
+}
+
 function createCharts() {
     // Study Hours Trend Chart
     createStudyHoursChart();
@@ -193,8 +396,7 @@ function createStudyHoursChart() {
     const ctx = document.getElementById('studyHoursChart');
     if (!ctx) return;
 
-    const data = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-    const studyHours = data.studyHours?.daily || [2.5, 3.2, 1.8, 4.1, 3.5, 2.9, 1.2];
+    const studyHours = analyticsData.studyHours?.daily || [2.5, 3.2, 1.8, 4.1, 3.5, 2.9, 1.2];
 
     new Chart(ctx, {
         type: 'line',
@@ -249,8 +451,7 @@ function createTaskDistributionChart() {
     const ctx = document.getElementById('taskDistributionChart');
     if (!ctx) return;
 
-    const data = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-    const taskData = data.taskCompletion || { completed: 89, pending: 24, overdue: 8, inProgress: 12 };
+    const taskData = analyticsData.taskCompletion || { completed: 89, pending: 24, overdue: 8, inProgress: 12 };
 
     new Chart(ctx, {
         type: 'doughnut',
@@ -288,8 +489,7 @@ function createSubjectPerformanceChart() {
     const ctx = document.getElementById('subjectPerformanceChart');
     if (!ctx) return;
 
-    const data = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-    const subjects = data.studyHours?.subjects || {
+    const subjects = analyticsData.studyHours?.subjects || {
         'Mathematics': 45,
         'Physics': 32,
         'Chemistry': 28,
@@ -364,9 +564,8 @@ function exportReport() {
     showNotification('Preparing analytics report...', 'info');
 
     setTimeout(() => {
-        // Simulate report generation
-        const data = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-        const report = generateReport(data);
+        // Generate report from current analytics data
+        const report = generateReport(analyticsData);
 
         // Create and download a simple text report
         const blob = new Blob([report], { type: 'text/plain' });
@@ -427,18 +626,9 @@ function expandChart(e) {
 
 // Update analytics data based on user activity
 function updateAnalyticsFromActivity() {
-    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const completedTasks = tasks.filter(task => task.status === 'completed');
-
-    // Update task completion data
-    const analyticsData = JSON.parse(localStorage.getItem('analyticsData') || '{}');
-    if (analyticsData.taskCompletion) {
-        analyticsData.taskCompletion.completed = completedTasks.length;
-        analyticsData.taskCompletion.pending = tasks.filter(task => task.status === 'pending').length;
-        analyticsData.taskCompletion.inProgress = tasks.filter(task => task.status === 'in-progress').length;
-
-        localStorage.setItem('analyticsData', JSON.stringify(analyticsData));
-    }
+    // Analytics data is now managed by the backend API
+    // This function is no longer needed as analytics are calculated server-side
+    console.log('Analytics data is now managed by the backend API');
 }
 
 // Call this function when tasks are updated

@@ -10,102 +10,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize schedule page
     initializeSchedulePage();
     setupEventListeners();
-    loadSchedule();
+    loadUserProfile(); // Load user profile
+    loadScheduleFromAPI();
     updateCurrentWeek();
 });
 
+// API Configuration
+const API_BASE = 'http://localhost:3000/api';
 let currentWeekStart = getWeekStart(new Date());
+let scheduleData = [];
 
 function initializeSchedulePage() {
-    // Create default schedule if none exists
-    const schedule = JSON.parse(localStorage.getItem('schedule') || '[]');
-    if (schedule.length === 0) {
-        createDefaultSchedule();
-    }
-}
-
-function createDefaultSchedule() {
-    const defaultSchedule = [
-        {
-            id: '1',
-            title: 'Physics Study',
-            description: 'Quantum Mechanics Review',
-            startTime: '08:00',
-            endTime: '10:00',
-            day: 'tuesday',
-            date: getDateForDay('tuesday'),
-            type: 'study',
-            color: 'blue'
-        },
-        {
-            id: '2',
-            title: 'Chemistry Lab',
-            description: 'Organic Synthesis Experiment',
-            startTime: '09:00',
-            endTime: '11:00',
-            day: 'monday',
-            date: getDateForDay('monday'),
-            type: 'class',
-            color: 'green'
-        },
-        {
-            id: '3',
-            title: 'Math Assignment',
-            description: 'Calculus Problem Set',
-            startTime: '11:00',
-            endTime: '13:00',
-            day: 'wednesday',
-            date: getDateForDay('wednesday'),
-            type: 'assignment',
-            color: 'purple'
-        },
-        {
-            id: '4',
-            title: 'Literature Reading',
-            description: 'Shakespeare Analysis',
-            startTime: '14:00',
-            endTime: '15:30',
-            day: 'thursday',
-            date: getDateForDay('thursday'),
-            type: 'study',
-            color: 'yellow'
-        },
-        {
-            id: '5',
-            title: 'CS Project',
-            description: 'Frontend Development',
-            startTime: '13:00',
-            endTime: '16:00',
-            day: 'friday',
-            date: getDateForDay('friday'),
-            type: 'project',
-            color: 'red'
-        },
-        {
-            id: '6',
-            title: 'Study Group',
-            description: 'Physics Discussion',
-            startTime: '15:00',
-            endTime: '17:00',
-            day: 'saturday',
-            date: getDateForDay('saturday'),
-            type: 'group',
-            color: 'cyan'
-        },
-        {
-            id: '7',
-            title: 'Exercise',
-            description: 'Gym Session',
-            startTime: '17:00',
-            endTime: '18:00',
-            day: 'sunday',
-            date: getDateForDay('sunday'),
-            type: 'personal',
-            color: 'orange'
-        }
-    ];
-
-    localStorage.setItem('schedule', JSON.stringify(defaultSchedule));
+    // No longer creating default schedule - will load from API
+    console.log('Initializing schedule page...');
 }
 
 function setupEventListeners() {
@@ -161,7 +78,7 @@ function navigateWeek(direction) {
     const oneWeek = 7 * 24 * 60 * 60 * 1000;
     currentWeekStart = new Date(currentWeekStart.getTime() + (direction * oneWeek));
     updateCurrentWeek();
-    loadSchedule();
+    loadScheduleFromAPI(); // Use API loading instead of localStorage
 }
 
 function updateCurrentWeek() {
@@ -207,19 +124,60 @@ function updateCalendarHeader() {
     });
 }
 
-function loadSchedule() {
-    const schedule = JSON.parse(localStorage.getItem('schedule') || '[]');
+// Load schedule from API
+async function loadScheduleFromAPI() {
+    try {
+        console.log('Loading schedule from API...');
 
-    // Clear existing schedule items
-    clearScheduleGrid();
+        // Get current week date range
+        const startDate = currentWeekStart.toISOString().split('T')[0];
+        const endDate = new Date(currentWeekStart);
+        endDate.setDate(endDate.getDate() + 6);
+        const endDateStr = endDate.toISOString().split('T')[0];
 
-    // Add schedule items to grid
-    schedule.forEach(item => {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE}/schedule?startDate=${startDate}&endDate=${endDateStr}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            scheduleData = data.schedules || [];
+            console.log('Loaded schedule data:', scheduleData);
+
+            // Clear existing schedule items and render new ones
+            clearScheduleGrid();
+            renderScheduleItems();
+            updateScheduleStats();
+        } else {
+            console.error('Failed to load schedule:', response.status);
+            // Use fallback empty schedule
+            scheduleData = [];
+            clearScheduleGrid();
+            updateScheduleStats();
+        }
+    } catch (error) {
+        console.error('Error loading schedule from API:', error);
+        // Use fallback empty schedule
+        scheduleData = [];
+        clearScheduleGrid();
+        updateScheduleStats();
+    }
+}
+
+// Render schedule items on the grid
+function renderScheduleItems() {
+    scheduleData.forEach(item => {
         addScheduleItemToGrid(item);
     });
+}
 
-    // Update statistics
-    updateScheduleStats();
+function loadSchedule() {
+    // Redirect to API loading function
+    loadScheduleFromAPI();
 }
 
 function clearScheduleGrid() {
@@ -228,7 +186,10 @@ function clearScheduleGrid() {
 }
 
 function addScheduleItemToGrid(item) {
-    const dayIndex = getDayIndex(item.day);
+    // Convert date to day index (0 = Monday, 1 = Tuesday, etc.)
+    const itemDate = new Date(item.date);
+    const dayIndex = getDayIndexFromDate(itemDate);
+
     const startHour = parseInt(item.startTime.split(':')[0]);
     const endHour = parseInt(item.endTime.split(':')[0]);
     const duration = endHour - startHour;
@@ -237,53 +198,210 @@ function addScheduleItemToGrid(item) {
     const timeRows = document.querySelectorAll('.grid-cols-8.divide-x.divide-dark-border.min-h-16');
     const hourRowIndex = startHour - 8; // Assuming schedule starts at 8 AM
 
-    if (hourRowIndex >= 0 && hourRowIndex < timeRows.length) {
+    if (hourRowIndex >= 0 && hourRowIndex < timeRows.length && dayIndex >= 0) {
         const row = timeRows[hourRowIndex];
         const cells = row.querySelectorAll('.p-2');
 
         if (dayIndex < cells.length) {
             const cell = cells[dayIndex];
 
+            // Determine color based on task or default
+            const color = getScheduleItemColor(item);
+
             const scheduleElement = document.createElement('div');
-            scheduleElement.className = `schedule-item bg-${item.color}-500/20 border border-${item.color}-500/50 rounded p-2 text-xs cursor-pointer hover:bg-${item.color}-500/30 transition-colors`;
+            scheduleElement.className = `schedule-item bg-${color}-500/20 border border-${color}-500/50 rounded p-2 text-xs cursor-pointer hover:bg-${color}-500/30 transition-colors relative group`;
             scheduleElement.innerHTML = `
-                <div class="font-medium text-${item.color}-400">${item.title}</div>
+                <div class="font-medium text-${color}-400">${item.title}</div>
                 <div class="text-gray-400">${item.startTime} - ${item.endTime}</div>
+                ${item.description ? `<div class="text-gray-500 text-xs mt-1">${item.description}</div>` : ''}
+                <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="delete-btn text-red-400 hover:text-red-300 text-xs">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             `;
 
             // Add click event for editing
             scheduleElement.addEventListener('click', () => editScheduleItem(item));
+
+            // Add delete button event
+            const deleteBtn = scheduleElement.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteScheduleItem(item);
+                });
+            }
 
             cell.appendChild(scheduleElement);
         }
     }
 }
 
-function editScheduleItem(item) {
-    showNotification(`Editing ${item.title}`, 'info');
-    // Here you could open an edit modal or inline editing
+// Helper function to get day index from date (relative to current week)
+function getDayIndexFromDate(date) {
+    const itemDate = new Date(date);
+    const weekStart = new Date(currentWeekStart);
+
+    // Calculate days difference from week start
+    const diffTime = itemDate.getTime() - weekStart.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Return day index (0-6 for Mon-Sun), or -1 if outside current week
+    return (diffDays >= 0 && diffDays < 7) ? diffDays : -1;
 }
 
-function generateOptimizedSchedule() {
+// Helper function to determine color for schedule item
+function getScheduleItemColor(item) {
+    if (item.taskId && item.taskId.priority) {
+        switch (item.taskId.priority) {
+            case 'high': return 'red';
+            case 'medium': return 'yellow';
+            case 'low': return 'green';
+        }
+    }
+    return 'blue'; // default color
+}
+
+async function editScheduleItem(item) {
+    // Create a simple prompt-based edit for now
+    // In a real app, this would open a proper edit modal
+    const newTitle = prompt('Edit title:', item.title);
+    if (newTitle === null) return; // User cancelled
+
+    const newDescription = prompt('Edit description:', item.description || '');
+    if (newDescription === null) return; // User cancelled
+
+    const newStartTime = prompt('Edit start time (HH:MM):', item.startTime);
+    if (newStartTime === null) return; // User cancelled
+
+    const newEndTime = prompt('Edit end time (HH:MM):', item.endTime);
+    if (newEndTime === null) return; // User cancelled
+
+    // Validation
+    if (newStartTime >= newEndTime) {
+        showNotification('End time must be after start time', 'error');
+        return;
+    }
+
+    try {
+        const updatedData = {
+            title: newTitle || item.title,
+            description: newDescription,
+            startTime: newStartTime || item.startTime,
+            endTime: newEndTime || item.endTime
+        };
+
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE}/schedule/${item._id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updatedData)
+        });
+
+        if (response.ok) {
+            showNotification('Schedule item updated successfully!', 'success');
+            await loadScheduleFromAPI(); // Reload to show changes
+        } else {
+            const error = await response.json();
+            showNotification(error.error || 'Failed to update schedule item', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating schedule item:', error);
+        showNotification('Failed to update schedule item', 'error');
+    }
+}
+
+// Add delete functionality
+async function deleteScheduleItem(item) {
+    if (!confirm(`Are you sure you want to delete "${item.title}"?`)) {
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE}/schedule/${item._id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showNotification('Schedule item deleted successfully!', 'success');
+            await loadScheduleFromAPI(); // Reload to show changes
+        } else {
+            const error = await response.json();
+            showNotification(error.error || 'Failed to delete schedule item', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting schedule item:', error);
+        showNotification('Failed to delete schedule item', 'error');
+    }
+}
+
+async function generateOptimizedSchedule() {
     showNotification('Generating AI-optimized schedule...', 'info');
 
-    // Simulate AI processing
-    setTimeout(() => {
-        const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-        const pendingTasks = tasks.filter(task => task.status === 'pending');
+    try {
+        // Get pending tasks from API
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const tasksResponse = await fetch(`${API_BASE}/tasks?status=pending`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
 
-        // Create optimized schedule based on tasks
-        const optimizedSchedule = generateScheduleFromTasks(pendingTasks);
+        if (!tasksResponse.ok) {
+            throw new Error('Failed to fetch tasks');
+        }
 
-        // Merge with existing schedule
-        const existingSchedule = JSON.parse(localStorage.getItem('schedule') || '[]');
-        const newSchedule = [...existingSchedule, ...optimizedSchedule];
+        const tasksData = await tasksResponse.json();
+        const pendingTasks = tasksData.tasks || tasksData;
 
-        localStorage.setItem('schedule', JSON.stringify(newSchedule));
-        loadSchedule();
+        // Generate schedule items for pending tasks
+        const optimizedScheduleItems = generateScheduleFromTasks(pendingTasks);
 
-        showNotification(`Generated schedule with ${optimizedSchedule.length} new time blocks!`, 'success');
-    }, 2000);
+        // Create schedule items via API
+        let createdCount = 0;
+        for (const item of optimizedScheduleItems) {
+            try {
+                const response = await fetch(`${API_BASE}/schedule`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        date: item.date,
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        title: item.title,
+                        description: item.description
+                    })
+                });
+
+                if (response.ok) {
+                    createdCount++;
+                }
+            } catch (error) {
+                console.error('Error creating schedule item:', error);
+            }
+        }
+
+        // Reload schedule to show new items
+        await loadScheduleFromAPI();
+        showNotification(`Generated schedule with ${createdCount} new time blocks!`, 'success');
+
+    } catch (error) {
+        console.error('Error generating optimized schedule:', error);
+        showNotification('Failed to generate optimized schedule', 'error');
+    }
 }
 
 function generateScheduleFromTasks(tasks) {
@@ -302,7 +420,7 @@ function generateScheduleFromTasks(tasks) {
             startTime: `${hour.toString().padStart(2, '0')}:00`,
             endTime: `${(hour + 2).toString().padStart(2, '0')}:00`,
             day: day,
-            date: getDateForDay(day),
+            date: calculateDateForDay(day).toISOString().split('T')[0],
             type: 'study',
             color: getColorForPriority(task.priority),
             generated: true
@@ -328,42 +446,83 @@ function closeTimeBlockModalFunc() {
     }
 }
 
-function handleAddTimeBlock(e) {
+async function handleAddTimeBlock(e) {
     e.preventDefault();
 
     const formData = new FormData(e.target);
-    const timeBlock = {
-        id: Date.now().toString(),
-        day: formData.get('day'),
-        startTime: formData.get('startTime'),
-        endTime: formData.get('endTime'),
-        label: formData.get('label') || 'Available Time',
-        type: 'available',
-        color: 'gray'
-    };
+    const day = formData.get('day');
+    const startTime = formData.get('startTime');
+    const endTime = formData.get('endTime');
+    const title = formData.get('label') || 'Available Time';
+    const description = formData.get('description') || '';
 
     // Validation
-    if (!timeBlock.day || !timeBlock.startTime || !timeBlock.endTime) {
+    if (!day || !startTime || !endTime) {
         showNotification('Please fill in all required fields', 'error');
         return;
     }
 
-    if (timeBlock.startTime >= timeBlock.endTime) {
+    if (startTime >= endTime) {
         showNotification('End time must be after start time', 'error');
         return;
     }
 
-    // Save time block
-    const timeBlocks = JSON.parse(localStorage.getItem('timeBlocks') || '[]');
-    timeBlocks.push(timeBlock);
-    localStorage.setItem('timeBlocks', JSON.stringify(timeBlocks));
+    try {
+        // Calculate the date for the selected day
+        const scheduleDate = calculateDateForDay(day);
 
-    closeTimeBlockModalFunc();
-    showNotification('Time block added successfully!', 'success');
+        const scheduleData = {
+            date: scheduleDate.toISOString().split('T')[0],
+            startTime,
+            endTime,
+            title,
+            description
+        };
+
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE}/schedule`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scheduleData)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Schedule item created:', result);
+
+            closeTimeBlockModalFunc();
+            showNotification('Schedule item added successfully!', 'success');
+
+            // Reload schedule to show new item
+            await loadScheduleFromAPI();
+        } else {
+            const error = await response.json();
+            showNotification(error.error || 'Failed to add schedule item', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding schedule item:', error);
+        showNotification('Failed to add schedule item', 'error');
+    }
+}
+
+// Helper function to calculate date for a day name relative to current week
+function calculateDateForDay(dayName) {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayIndex = days.indexOf(dayName.toLowerCase());
+
+    if (dayIndex === -1) return new Date(); // fallback
+
+    const date = new Date(currentWeekStart);
+    date.setDate(date.getDate() + dayIndex);
+    return date;
 }
 
 function updateScheduleStats() {
-    const schedule = JSON.parse(localStorage.getItem('schedule') || '[]');
+    // Use loaded schedule data instead of localStorage
+    const schedule = scheduleData || [];
 
     // Calculate time distribution
     const timeDistribution = {
@@ -373,21 +532,39 @@ function updateScheduleStats() {
         other: 0
     };
 
+    let totalHours = 0;
+
     schedule.forEach(item => {
         const duration = calculateDuration(item.startTime, item.endTime);
-        if (item.type === 'study') {
+        totalHours += duration;
+
+        // Categorize based on title/description content
+        const text = (item.title + ' ' + (item.description || '')).toLowerCase();
+        if (text.includes('study') || text.includes('review') || text.includes('learn')) {
             timeDistribution.study += duration;
-        } else if (item.type === 'assignment') {
+        } else if (text.includes('assignment') || text.includes('homework')) {
             timeDistribution.assignment += duration;
-        } else if (item.type === 'project') {
+        } else if (text.includes('project')) {
             timeDistribution.project += duration;
         } else {
             timeDistribution.other += duration;
         }
     });
 
-    // Update time distribution display
-    updateTimeDistribution(timeDistribution);
+    // Update UI
+    const totalHoursElement = document.getElementById('totalHours');
+    const studyHoursElement = document.getElementById('studyHours');
+    const projectsElement = document.getElementById('projects');
+    const freeHoursElement = document.getElementById('freeHours');
+
+    if (totalHoursElement) totalHoursElement.textContent = `${totalHours}h`;
+    if (studyHoursElement) studyHoursElement.textContent = `${timeDistribution.study}h`;
+    if (projectsElement) projectsElement.textContent = schedule.length;
+    if (freeHoursElement) {
+        const totalWeekHours = 7 * 12; // 7 days * 12 hours (8AM-8PM)
+        const freeHours = Math.max(0, totalWeekHours - totalHours);
+        freeHoursElement.textContent = `${freeHours}h`;
+    }
 }
 
 function updateTimeDistribution(distribution) {

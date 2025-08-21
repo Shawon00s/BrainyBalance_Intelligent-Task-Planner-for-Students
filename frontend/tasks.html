@@ -8,6 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Flatpickr Date Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -35,6 +39,54 @@
             }
         }
     </script>
+    <style>
+        /* Custom styles for Flatpickr dark theme */
+        .flatpickr-calendar {
+            background: #1a1a1b !important;
+            border: 1px solid #2d2d30 !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .flatpickr-calendar.open {
+            z-index: 9999 !important;
+        }
+
+        .flatpickr-day:hover {
+            background: #6366f1 !important;
+            color: white !important;
+        }
+
+        .flatpickr-day.selected {
+            background: #6366f1 !important;
+            border-color: #6366f1 !important;
+        }
+
+        .flatpickr-day.today {
+            border-color: #fbbf24 !important;
+        }
+
+        .flatpickr-time input:hover,
+        .flatpickr-time input:focus {
+            background: #2d2d30 !important;
+            color: white !important;
+        }
+
+        .flatpickr-calendar .flatpickr-month {
+            background: #1a1a1b !important;
+        }
+
+        .flatpickr-calendar .flatpickr-weekdays {
+            background: #1a1a1b !important;
+        }
+
+        .flatpickr-calendar .flatpickr-days {
+            background: #1a1a1b !important;
+        }
+
+        .flatpickr-time {
+            background: #1a1a1b !important;
+        }
+    </style>
 </head>
 
 <body class="font-inter bg-dark-bg text-gray-100">
@@ -59,6 +111,9 @@
                             class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
                             class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                        <a href="calendar.html" class="text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fab fa-google mr-1"></i>Calendar
+                        </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -69,9 +124,9 @@
                     </button>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
-                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=JS" alt="Profile"
-                                class="w-8 h-8 rounded-full">
-                            <span class="hidden md:block">John Student</span>
+                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
+                                class="w-8 h-8 rounded-full profile-image">
+                            <span class="hidden md:block user-name">User</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
                         <div
@@ -104,6 +159,9 @@
             <a href="schedule.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
             <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
             <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
+            <a href="calendar.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">
+                <i class="fab fa-google mr-1"></i>Calendar
+            </a>
         </div>
     </div>
 
@@ -161,7 +219,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Total Tasks</p>
-                        <p class="text-2xl font-bold text-blue-400">24</p>
+                        <p id="totalTasksCount" class="text-2xl font-bold text-blue-400">0</p>
                     </div>
                     <div class="bg-blue-500/20 p-3 rounded-lg">
                         <i class="fas fa-tasks text-blue-400 text-xl"></i>
@@ -172,7 +230,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Pending</p>
-                        <p class="text-2xl font-bold text-yellow-400">8</p>
+                        <p id="pendingTasksCount" class="text-2xl font-bold text-yellow-400">0</p>
                     </div>
                     <div class="bg-yellow-500/20 p-3 rounded-lg">
                         <i class="fas fa-clock text-yellow-400 text-xl"></i>
@@ -183,7 +241,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">In Progress</p>
-                        <p class="text-2xl font-bold text-orange-400">4</p>
+                        <p id="inProgressTasksCount" class="text-2xl font-bold text-orange-400">0</p>
                     </div>
                     <div class="bg-orange-500/20 p-3 rounded-lg">
                         <i class="fas fa-spinner text-orange-400 text-xl"></i>
@@ -194,7 +252,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Completed</p>
-                        <p class="text-2xl font-bold text-green-400">12</p>
+                        <p id="completedTasksCount" class="text-2xl font-bold text-green-400">0</p>
                     </div>
                     <div class="bg-green-500/20 p-3 rounded-lg">
                         <i class="fas fa-check-circle text-green-400 text-xl"></i>
@@ -347,7 +405,7 @@
     <!-- Add Task Modal -->
     <div id="addTaskModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="bg-gradient-card rounded-xl border border-dark-border p-6 w-full max-w-md">
+            <div class="bg-gradient-card rounded-xl border border-dark-border p-8 w-full max-w-3xl">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-semibold">Add New Task</h2>
                     <button id="closeModal" class="text-gray-400 hover:text-white">
@@ -392,8 +450,27 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Due Date & Time</label>
-                        <input type="datetime-local" name="dueDate" required
-                            class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <div class="relative">
+                            <input type="text" id="dueDatePicker" name="dueDate" required
+                                placeholder="Select date and time..."
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 pr-10 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer">
+                            <i
+                                class="fas fa-calendar-alt absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Time (minutes)</label>
+                            <input type="number" name="estimatedTime" min="15" max="480" step="15" value="60"
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="60">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tags (optional)</label>
+                            <input type="text" name="tags"
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="homework, research, review">
+                        </div>
                     </div>
                     <div class="flex space-x-4 pt-4">
                         <button type="button" id="cancelTask"
@@ -411,13 +488,66 @@
     </div>
 
     <script src="js/auth.js"></script>
+    <script src="js/googleCalendar.js"></script>
     <script src="js/tasks.js"></script>
     <script>
         // Initialize auth system for this page
         document.addEventListener('DOMContentLoaded', function () {
             // Make logout function globally available
             window.logout = logout;
+
+            // Initialize date picker
+            initializeDatePicker();
         });
+
+        function initializeDatePicker() {
+            const datePickerElement = document.getElementById('dueDatePicker');
+            if (datePickerElement) {
+                flatpickr(datePickerElement, {
+                    enableTime: true,
+                    dateFormat: "Y-m-d H:i",
+                    time_24hr: true,
+                    minDate: "today",
+                    theme: "dark",
+                    disableMobile: true, // Force desktop view for better UX
+                    inline: false,
+                    clickOpens: true,
+                    allowInput: true,
+                    monthSelectorType: "dropdown",
+                    yearSelectorType: "dropdown",
+                    defaultHour: 9,
+                    defaultMinute: 0,
+                    minuteIncrement: 15,
+                    position: "below",
+                    animate: true,
+                    locale: {
+                        firstDayOfWeek: 1, // Monday
+                        weekdays: {
+                            shorthand: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                            longhand: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                        },
+                        months: {
+                            shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                            longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                        }
+                    },
+                    onReady: function (selectedDates, dateStr, instance) {
+                        // Custom styling for dark theme
+                        const calendarContainer = instance.calendarContainer;
+                        calendarContainer.style.fontFamily = 'Inter, sans-serif';
+                        calendarContainer.style.borderRadius = '12px';
+                        calendarContainer.style.border = '1px solid #2d2d30';
+                        calendarContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2)';
+                    },
+                    onChange: function (selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
+                            // Update the input value
+                            instance.input.value = dateStr;
+                        }
+                    }
+                });
+            }
+        }
     </script>
 </body>
 
