@@ -148,15 +148,31 @@ async function loadScheduleFromAPI() {
             scheduleData = data.schedules || [];
             console.log('Loaded schedule data:', scheduleData);
 
+            // If backend returned no schedule items for this week,
+            // fall back to tasks (map tasks with deadlines into calendar)
+            if ((!scheduleData || scheduleData.length === 0)) {
+                const tasks = await fetchTasksForWeek(startDate, endDateStr);
+                if (tasks && tasks.length) {
+                    const mapped = tasksToScheduleItems(tasks);
+                    // mark items as coming from tasks (no _id)
+                    scheduleData = mapped;
+                }
+            }
+
             // Clear existing schedule items and render new ones
             clearScheduleGrid();
             renderScheduleItems();
             updateScheduleStats();
         } else {
             console.error('Failed to load schedule:', response.status);
-            // Use fallback empty schedule
+            // Use fallback empty schedule -> try tasks
             scheduleData = [];
+            const tasks = await fetchTasksForWeek(startDate, endDateStr);
+            if (tasks && tasks.length) {
+                scheduleData = tasksToScheduleItems(tasks);
+            }
             clearScheduleGrid();
+            renderScheduleItems();
             updateScheduleStats();
         }
     } catch (error) {
@@ -648,6 +664,63 @@ function getColorForPriority(priority) {
         low: 'green'
     };
     return colors[priority] || 'blue';
+}
+
+// Fetch pending tasks whose deadline falls within the current week
+async function fetchTasksForWeek(startDate, endDate) {
+    try {
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const response = await fetch(`${API_BASE}/tasks?status=pending&startDate=${startDate}&endDate=${endDate}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error('Failed to fetch tasks for week', response.status);
+            return [];
+        }
+
+        const data = await response.json();
+        return data.tasks || data || [];
+    } catch (err) {
+        console.error('Error fetching tasks for week:', err);
+        return [];
+    }
+}
+
+// Convert tasks into schedule items for display. Use task.deadline as date and allocate a 1-2 hour block.
+function tasksToScheduleItems(tasks) {
+    const items = [];
+    const preferredStart = 9; // default start hour if none provided
+
+    tasks.forEach((task, idx) => {
+        // Use task.deadline if present, else skip
+        const deadline = task.deadline ? new Date(task.deadline) : null;
+        if (!deadline) return;
+
+        // If deadline falls within current week
+        const dayIndex = getDayIndexFromDate(deadline);
+        if (dayIndex === -1) return;
+
+        // Assign a start hour based on index to avoid overlaps
+        const startHour = preferredStart + (idx % 6); // slot across day
+        const endHour = startHour + Math.min(2, Math.max(1, Math.ceil((task.estimatedTime || 60) / 60)));
+
+        items.push({
+            // no _id since these are not stored schedule items yet
+            title: task.title,
+            description: task.description || '',
+            date: deadline.toISOString().split('T')[0],
+            startTime: `${startHour.toString().padStart(2, '0')}:00`,
+            endTime: `${endHour.toString().padStart(2, '0')}:00`,
+            taskId: task, // keep task object for priority/color mapping
+            generatedFromTask: true
+        });
+    });
+
+    return items;
 }
 
 // Utility function to show notifications

@@ -69,13 +69,13 @@ function generateSampleAnalyticsData() {
 
 function setupEventListeners() {
     // Time period selector
-    const periodSelector = document.querySelector('select');
+    const periodSelector = document.getElementById('analyticsPeriodSelector') || document.querySelector('select');
     if (periodSelector) {
         periodSelector.addEventListener('change', handlePeriodChange);
     }
 
     // Export report button
-    const exportBtn = document.querySelector('button:contains("Export Report")');
+    const exportBtn = document.getElementById('exportReportBtn') || Array.from(document.querySelectorAll('button')).find(b => /export report/i.test(b.textContent));
     if (exportBtn) {
         exportBtn.addEventListener('click', exportReport);
     }
@@ -275,7 +275,7 @@ function updateKeyMetrics(data) {
 }
 
 function updateAchievements(achievements) {
-    const achievementsContainer = document.querySelector('.space-y-4:has(.fa-medal)');
+    const achievementsContainer = document.getElementById('achievementsContainer') || document.querySelector('.space-y-4');
     if (achievementsContainer && achievements.length > 0) {
         achievementsContainer.innerHTML = achievements.map(achievement => `
             <div class="flex items-center space-x-4 p-4 bg-dark-bg rounded-lg">
@@ -317,7 +317,7 @@ function updateInsights(data) {
         }
     ];
 
-    const insightsContainer = document.querySelector('.space-y-4:has(.fa-lightbulb)');
+    const insightsContainer = document.getElementById('insightsContainer') || document.querySelector('.space-y-4');
     if (insightsContainer) {
         insightsContainer.innerHTML = insights.map(insight => `
             <div class="bg-${insight.color}-500/10 border border-${insight.color}-500/30 rounded-lg p-4">
