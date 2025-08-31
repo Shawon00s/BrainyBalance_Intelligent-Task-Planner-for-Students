@@ -156,15 +156,32 @@ async function registerUser(userData) {
             body: JSON.stringify(userData)
         });
 
-        setToken(data.token);
-        setUser(data.user);
+        // If backend returned a token (legacy or immediate-verify flow), keep old behavior
+        if (data.token) {
+            setToken(data.token);
+            if (data.user) setUser(data.user);
 
-        showNotification('Registration successful!', 'success');
+            showNotification('Registration successful!', 'success');
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1500);
+            return;
+        }
 
-        // Only redirect on successful registration
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1500);
+        // Otherwise, user must verify via OTP. Backend returns a user object with id.
+        if (data.user && data.user.id) {
+            showNotification('Registration created. Check your email for OTP to verify your account.', 'info');
+            // Store a small marker so verify page can read user info if needed
+            localStorage.setItem('pendingUser', JSON.stringify({ id: data.user.id, email: data.user.email }));
+            // Redirect to OTP verification page with userId
+            setTimeout(() => {
+                window.location.href = `verify-otp.html?userId=${data.user.id}`;
+            }, 1200);
+            return;
+        }
+
+        // Fallback
+        showNotification(data.message || 'Registration successful. Please verify your email.', 'success');
 
     } catch (error) {
         showNotification(error.message, 'error');
@@ -184,6 +201,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // Display user info if authenticated
         displayUserInfo();
+    }
+
+    // Google Login button handler
+    const googleLoginBtn = document.getElementById('googleLoginBtn');
+    if (googleLoginBtn) {
+        googleLoginBtn.addEventListener('click', async function () {
+            try {
+                // Get Google OAuth URL from backend
+                const res = await fetch('http://localhost:3000/api/calendar/auth-url', {
+                    credentials: 'include',
+                    headers: { 'Authorization': '' }
+                });
+                const data = await res.json();
+                if (data.authUrl) {
+                    window.location.href = data.authUrl;
+                } else {
+                    showNotification('Failed to get Google login URL', 'error');
+                }
+            } catch (err) {
+                showNotification('Google login error', 'error');
+            }
+        });
     }
 
     // REMOVED: Automatic redirect from login page

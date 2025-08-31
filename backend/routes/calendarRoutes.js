@@ -7,7 +7,7 @@ const router = express.Router();
 const googleCalendar = new GoogleCalendarService();
 
 // Get Google Calendar authorization URL
-router.get('/auth-url', authMiddleware, async (req, res) => {
+router.get('/auth-url', async (req, res) => {
     try {
         const authUrl = googleCalendar.getAuthUrl();
         res.json({ authUrl });

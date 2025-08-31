@@ -4,8 +4,45 @@ import AIRecommendationEngine from '../services/aiRecommendationService.js';
 import AIRecommendation from '../models/AIRecommendation.js';
 import UserPreferences from '../models/UserPreferences.js';
 
+import { getGeminiRecommendation } from '../services/geminiService.js';
+import Analytics from '../models/Analytics.js';
+import Task from '../models/Task.js';
+import Schedule from '../models/Schedule.js';
+
 const router = express.Router();
 
+// Generate Gemini-powered AI recommendation
+router.post('/gemini', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user._id;
+        // Gather user data
+        const [analytics, tasks, schedules, preferences] = await Promise.all([
+            Analytics.findOne({ userId }),
+            Task.find({ userId }),
+            Schedule.find({ userId }),
+            UserPreferences.findOne({ userId })
+        ]);
+
+        // Build a prompt for Gemini
+        let prompt = `You are an intelligent student task planner. Given the following user data, generate personalized study and productivity recommendations.\n`;
+        prompt += `Tasks: ${JSON.stringify(tasks)}\n`;
+        prompt += `Analytics: ${JSON.stringify(analytics)}\n`;
+        prompt += `Schedules: ${JSON.stringify(schedules)}\n`;
+        prompt += `Preferences: ${JSON.stringify(preferences)}\n`;
+        prompt += `\nRespond with actionable, concise, and motivational advice for the student.\n`;
+
+        // Call Gemini
+        const geminiText = await getGeminiRecommendation(prompt);
+
+        res.json({
+            success: true,
+            gemini: geminiText
+        });
+    } catch (error) {
+        console.error('Gemini recommendation error:', error);
+        res.status(500).json({ error: 'Failed to generate Gemini recommendation', details: error.message });
+    }
+});
 // Generate new AI recommendations
 router.post('/generate', authMiddleware, async (req, res) => {
     try {

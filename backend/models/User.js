@@ -25,6 +25,25 @@ const userSchema = new mongoose.Schema({
     lastLogin: {
         type: Date,
         default: Date.now
+    },
+    // Email verification fields
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    otpHash: {
+        type: String
+    },
+    otpExpires: {
+        type: Date
+    },
+    otpAttempts: {
+        type: Number,
+        default: 0
+    },
+    otpResendCount: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true
