@@ -119,6 +119,7 @@ async function loadTasks() {
 }
 
 async function handleAddTask(e) {
+    console.log('handleAddTask called');
     e.preventDefault();
 
     const formData = new FormData(e.target);
@@ -132,11 +133,16 @@ async function handleAddTask(e) {
         tags: formData.get('tags') ? formData.get('tags').split(',').map(tag => tag.trim()) : []
     };
 
+    console.log('Task data:', taskData);
+
     // Validation
     if (!taskData.title || !taskData.deadline) {
+        console.log('Validation failed:', { title: taskData.title, deadline: taskData.deadline });
         showNotification('Please fill in all required fields', 'error');
         return;
     }
+
+    console.log('Validation passed, making API call...');
 
     try {
         showLoading('Creating task...');
@@ -327,11 +333,13 @@ function createTaskCard(task) {
                     </div>
                 </div>
                 <div class="flex items-center space-x-2">
+                    <!-- Temporarily disabled Google Calendar sync
                     <button onclick="syncTaskToCalendar('${task._id}')" 
                             class="text-gray-400 hover:text-green-400 p-2 sync-task-btn" 
                             title="Sync to Google Calendar">
                         <i class="fab fa-google"></i>
                     </button>
+                    -->
                     <button onclick="editTask('${task._id}')" class="text-gray-400 hover:text-blue-400 p-2">
                         <i class="fas fa-edit"></i>
                     </button>

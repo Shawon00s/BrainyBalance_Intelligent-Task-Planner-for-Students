@@ -24,22 +24,47 @@
                         'primary-dark': '#5856eb',
                         'accent': '#fbbf24',
                         'accent-dark': '#f59e0b',
-                        'dark-bg': '#0a0a0b',
-                        'dark-card': '#1a1a1b',
-                        'dark-border': '#2d2d30',
+                        'dark-bg': '#0f172a',
+                        'dark-card': '#1e293b',
+                        'dark-border': '#334155',
                     },
                     backgroundImage: {
                         'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         'gradient-secondary': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                         'gradient-accent': 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                        'gradient-dark': 'linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%)',
-                        'gradient-card': 'linear-gradient(135deg, #1e1e1f 0%, #2a2a2b 100%)',
+                        'gradient-dark': 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                        'gradient-card': 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
                     }
                 }
             }
         }
     </script>
     <style>
+        .glass-effect {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(51, 65, 85, 0.3);
+        }
+
+        .dashboard-card {
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .nav-link {
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+        }
+
         /* Custom styles for Flatpickr dark theme */
         .flatpickr-calendar {
             background: #1a1a1b !important;
@@ -89,9 +114,9 @@
     </style>
 </head>
 
-<body class="font-inter bg-dark-bg text-gray-100">
+<body class="font-inter bg-gradient-to-br from-dark-bg via-slate-900 to-dark-card text-gray-100 min-h-screen">
     <!-- Navigation -->
-    <nav class="bg-gradient-to-r from-gray-900/95 to-black/95 backdrop-blur-md border-b border-dark-border">
+    <nav class="glass-effect border-b border-dark-border">
         <div class="max-w-7xl mx-auto px-4 lg:px-6">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-8">
@@ -103,15 +128,17 @@
                     </div>
                     <div class="hidden md:flex space-x-6">
                         <a href="dashboard.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Dashboard</a>
-                        <a href="tasks.html" class="text-indigo-400 border-b-2 border-indigo-400 pb-1">Tasks</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Dashboard</a>
+                        <a href="tasks.html"
+                            class="nav-link px-3 py-2 rounded-lg text-indigo-400 bg-indigo-500/20 border border-indigo-500/30">Tasks</a>
                         <a href="schedule.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
                         <a href="analytics.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
-                        <a href="calendar.html" class="text-gray-300 hover:text-indigo-400 transition-colors">
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                        <a href="calendar.html"
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">
                             <i class="fab fa-google mr-1"></i>Calendar
                         </a>
                     </div>
@@ -181,7 +208,7 @@
         </div>
 
         <!-- Filters and Search -->
-        <div class="bg-gradient-card rounded-xl p-6 border border-dark-border mb-8">
+        <div class="glass-effect rounded-xl p-6 dashboard-card mb-8">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="relative">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -215,7 +242,7 @@
 
         <!-- Task Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+            <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Total Tasks</p>
@@ -226,7 +253,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+            <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Pending</p>
@@ -237,7 +264,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+            <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">In Progress</p>
@@ -248,7 +275,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+            <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-400 text-sm">Completed</p>
@@ -262,7 +289,7 @@
         </div>
 
         <!-- Task List -->
-        <div class="bg-gradient-card rounded-xl border border-dark-border">
+        <div class="glass-effect rounded-xl dashboard-card">
             <div class="p-6 border-b border-dark-border">
                 <h2 class="text-xl font-semibold flex items-center">
                     <i class="fas fa-list text-indigo-400 mr-2"></i>
@@ -405,7 +432,7 @@
     <!-- Add Task Modal -->
     <div id="addTaskModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="bg-gradient-card rounded-xl border border-dark-border p-8 w-full max-w-3xl">
+            <div class="glass-effect rounded-xl p-8 w-full max-w-3xl dashboard-card">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-xl font-semibold">Add New Task</h2>
                     <button id="closeModal" class="text-gray-400 hover:text-white">

@@ -110,6 +110,14 @@ async function loadAnalyticsFromAPI() {
             }
         });
 
+        // Load insights data
+        const insightsResponse = await fetch(`${API_BASE}/analytics/insights`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
         // Load tasks data for completion metrics
         const tasksResponse = await fetch(`${API_BASE}/tasks`, {
             headers: {
@@ -118,13 +126,14 @@ async function loadAnalyticsFromAPI() {
             }
         });
 
-        if (dashboardResponse.ok && trendsResponse.ok && tasksResponse.ok) {
+        if (dashboardResponse.ok && trendsResponse.ok && tasksResponse.ok && insightsResponse.ok) {
             const dashboardData = await dashboardResponse.json();
             const trendsData = await trendsResponse.json();
+            const insightsData = await insightsResponse.json();
             const tasksData = await tasksResponse.json();
 
             // Process and combine data
-            analyticsData = processApiData(dashboardData, trendsData, tasksData);
+            analyticsData = processApiData(dashboardData, trendsData, tasksData, insightsData);
 
             // Update UI
             updateKeyMetrics(analyticsData);
@@ -135,6 +144,11 @@ async function loadAnalyticsFromAPI() {
             console.log('Analytics data loaded successfully:', analyticsData);
         } else {
             console.error('Failed to load analytics data');
+            if (!dashboardResponse.ok) console.error('Dashboard response:', dashboardResponse.status);
+            if (!trendsResponse.ok) console.error('Trends response:', trendsResponse.status);
+            if (!insightsResponse.ok) console.error('Insights response:', insightsResponse.status);
+            if (!tasksResponse.ok) console.error('Tasks response:', tasksResponse.status);
+            
             // Use fallback data
             generateFallbackAnalyticsData();
         }
@@ -146,24 +160,39 @@ async function loadAnalyticsFromAPI() {
 }
 
 // Process API data into frontend format
-function processApiData(dashboard, trends, tasks) {
+function processApiData(dashboard, trends, tasks, insights) {
     const allTasks = tasks.tasks || tasks;
     const completedTasks = allTasks.filter(task => task.status === 'completed');
     const pendingTasks = allTasks.filter(task => task.status === 'pending');
     const overdueTasks = allTasks.filter(task => {
-        return task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+        return task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed';
     });
+
+    // Process daily data for charts
+    const dailyData = dashboard.analytics || [];
+    const dailyHours = dailyData.map(day => (day.totalWorkMinutes || 0) / 60);
+    
+    // Generate weekly data from daily data
+    const weeklyHours = [];
+    for (let i = 0; i < dailyData.length; i += 7) {
+        const weekData = dailyData.slice(i, i + 7);
+        const weekTotal = weekData.reduce((sum, day) => sum + (day.totalWorkMinutes || 0), 0) / 60;
+        weeklyHours.push(weekTotal);
+    }
+
+    // Process category and priority data from trends
+    const categoryData = trends.categoryDistribution || {};
+    const priorityData = trends.priorityDistribution || {};
 
     return {
         studyHours: {
-            daily: trends.dailyData?.map(d => d.totalWorkMinutes / 60) || [2.5, 3.2, 1.8, 4.1, 3.5, 2.9, 1.2],
-            weekly: trends.weeklyData?.map(w => w.totalWorkMinutes / 60) || [18.5, 22.3, 19.8, 24.1, 21.7, 20.5, 23.2],
-            subjects: trends.subjectBreakdown || {
-                'Mathematics': 45,
-                'Physics': 32,
-                'Chemistry': 28,
-                'Computer Science': 38,
-                'Literature': 22
+            daily: dailyHours.length > 0 ? dailyHours : [0, 0, 0, 0, 0, 0, 0],
+            weekly: weeklyHours.length > 0 ? weeklyHours : [0, 0, 0, 0],
+            subjects: {
+                'Assignment': categoryData.assignment || 0,
+                'Exam': categoryData.exam || 0,
+                'Personal': categoryData.personal || 0,
+                'Project': categoryData.project || 0
             }
         },
         taskCompletion: {
@@ -173,15 +202,26 @@ function processApiData(dashboard, trends, tasks) {
             inProgress: allTasks.filter(task => task.status === 'in-progress').length
         },
         productivity: {
-            averageGrade: 87.5, // Could be calculated from task ratings
-            productivityScore: dashboard.summary?.averageProductivityScore || 92,
-            focusScore: 85,
-            completionRate: dashboard.summary?.completionRate || 78
+            averageGrade: insights.stats?.avgProductivity || 0,
+            productivityScore: dashboard.summary?.averageProductivityScore || 0,
+            focusScore: Math.min(100, Math.round((dashboard.summary?.totalPomodoroSessions || 0) * 2)), // Estimate focus score
+            completionRate: dashboard.summary?.completionRate || 0
         },
-        summary: dashboard.summary,
+        summary: dashboard.summary || {
+            totalTasksCreated: 0,
+            totalTasksCompleted: 0,
+            totalWorkMinutes: 0,
+            totalPomodoroSessions: 0,
+            averageProductivityScore: 0,
+            completionRate: 0
+        },
         trends: trends,
-        achievements: generateAchievements(dashboard, allTasks),
-        weeklyActivity: trends.weeklyActivity || generateWeeklyActivity()
+        insights: insights.insights || [],
+        recommendations: insights.recommendations || [],
+        achievements: generateAchievements(dashboard, allTasks, insights),
+        weeklyActivity: generateWeeklyActivityFromData(dailyData),
+        streaks: dashboard.streaks || { currentStreak: 0, longestStreak: 0 },
+        priorityDistribution: priorityData
     };
 }
 
@@ -293,29 +333,53 @@ function updateAchievements(achievements) {
 }
 
 function updateInsights(data) {
-    const insights = [
-        {
-            type: 'performance',
-            icon: 'chart-bar',
-            color: 'blue',
-            title: 'Peak Performance',
-            text: 'You\'re most productive between 10 AM - 12 PM. Schedule important tasks during this time.'
-        },
-        {
-            type: 'strength',
-            icon: 'thumbs-up',
-            color: 'green',
-            title: 'Strength',
-            text: 'Mathematics is your strongest subject with 94% average completion rate.'
-        },
-        {
-            type: 'improvement',
-            icon: 'exclamation-triangle',
+    // Use real insights from API or generate based on data
+    const realInsights = data.insights || [];
+    const realRecommendations = data.recommendations || [];
+    
+    let insights = [];
+    
+    // Add real insights
+    realInsights.forEach((insight, index) => {
+        insights.push({
+            type: 'insight',
+            icon: index % 3 === 0 ? 'lightbulb' : index % 3 === 1 ? 'chart-bar' : 'target',
+            color: index % 3 === 0 ? 'yellow' : index % 3 === 1 ? 'blue' : 'green',
+            title: 'Insight',
+            text: insight
+        });
+    });
+
+    // Add real recommendations
+    realRecommendations.forEach((recommendation, index) => {
+        insights.push({
+            type: 'recommendation',
+            icon: 'lightbulb',
             color: 'orange',
-            title: 'Improvement Area',
-            text: 'Consider adding more breaks between study sessions to maintain focus.'
-        }
-    ];
+            title: 'Recommendation',
+            text: recommendation
+        });
+    });
+
+    // If no real insights, show default ones
+    if (insights.length === 0) {
+        insights = [
+            {
+                type: 'getting-started',
+                icon: 'rocket',
+                color: 'blue',
+                title: 'Getting Started',
+                text: 'Create some tasks and start tracking your productivity to get personalized insights!'
+            },
+            {
+                type: 'tip',
+                icon: 'lightbulb',
+                color: 'yellow',
+                title: 'Pro Tip',
+                text: 'Use the Pomodoro timer to improve focus and track your study sessions.'
+            }
+        ];
+    }
 
     const insightsContainer = document.getElementById('insightsContainer') || document.querySelector('.space-y-4');
     if (insightsContainer) {
@@ -332,40 +396,94 @@ function updateInsights(data) {
 }
 
 // Helper function to generate achievements based on data
-function generateAchievements(dashboard, tasks) {
+function generateAchievements(dashboard, tasks, insights) {
     const achievements = [];
+    const summary = dashboard.summary || {};
+    const streaks = dashboard.streaks || {};
 
-    if (dashboard.summary?.totalTasksCompleted >= 50) {
+    // Study streak achievement
+    if (streaks.currentStreak > 0) {
         achievements.push({
-            title: 'Task Master',
-            description: 'Completed 50+ tasks',
-            value: dashboard.summary.totalTasksCompleted,
+            title: 'Study Streak',
+            description: `${streaks.currentStreak} days in a row!`,
+            value: streaks.currentStreak,
             icon: 'medal',
-            color: 'yellow'
+            color: streaks.currentStreak >= 7 ? 'yellow' : 'blue'
         });
     }
 
-    if (dashboard.summary?.completionRate >= 80) {
+    // Task completion achievements
+    if (summary.totalTasksCompleted >= 50) {
+        achievements.push({
+            title: 'Task Master',
+            description: 'Completed 50+ tasks',
+            value: summary.totalTasksCompleted,
+            icon: 'medal',
+            color: 'yellow'
+        });
+    } else if (summary.totalTasksCompleted > 0) {
+        achievements.push({
+            title: 'Tasks Completed',
+            description: 'This week',
+            value: summary.totalTasksCompleted,
+            icon: 'check-circle',
+            color: 'green'
+        });
+    }
+
+    if (summary.completionRate >= 80) {
         achievements.push({
             title: 'High Achiever',
             description: 'Maintained 80%+ completion rate',
-            value: dashboard.summary.completionRate + '%',
+            value: summary.completionRate + '%',
             icon: 'trophy',
             color: 'blue'
         });
     }
 
-    if (dashboard.summary?.totalWorkMinutes >= 3600) { // 60 hours
+    if (summary.totalWorkMinutes >= 3600) { // 60 hours
         achievements.push({
             title: 'Study Champion',
             description: 'Studied for 60+ hours',
-            value: Math.round(dashboard.summary.totalWorkMinutes / 60) + 'h',
+            value: Math.round(summary.totalWorkMinutes / 60) + 'h',
             icon: 'clock',
             color: 'green'
         });
+    } else if (summary.totalWorkMinutes > 0) {
+        achievements.push({
+            title: 'Study Hours',
+            description: 'This week',
+            value: Math.round(summary.totalWorkMinutes / 60) + 'h',
+            icon: 'hourglass-half',
+            color: 'blue'
+        });
     }
 
-    return achievements;
+    // Pomodoro sessions achievement
+    if (summary.totalPomodoroSessions > 0) {
+        achievements.push({
+            title: 'Focus Sessions',
+            description: 'Pomodoro completed',
+            value: summary.totalPomodoroSessions,
+            icon: 'clock',
+            color: 'blue'
+        });
+    }
+
+    // Productivity score achievement
+    if (summary.averageProductivityScore >= 80) {
+        achievements.push({
+            title: 'High Performer',
+            description: `${summary.averageProductivityScore}% productivity`,
+            value: `${summary.averageProductivityScore}%`,
+            icon: 'trophy',
+            color: 'yellow'
+        });
+    }
+
+    return achievements.length > 0 ? achievements : [
+        { title: 'Getting Started', description: 'Create your first task!', value: '0', icon: 'star', color: 'gray' }
+    ];
 }
 
 // Helper function to generate weekly activity heatmap data
@@ -379,6 +497,43 @@ function generateWeeklyActivity() {
         [0, 0, 1, 1, 2, 3, 2], // Saturday
         [0, 0, 0, 1, 1, 2, 1]  // Sunday
     ];
+}
+
+// Generate weekly activity from real data
+function generateWeeklyActivityFromData(dailyData) {
+    if (!dailyData || dailyData.length === 0) {
+        return generateWeeklyActivity(); // Fallback to placeholder
+    }
+
+    const weeklyActivity = [
+        [0, 0, 0, 0, 0, 0, 0], // Monday
+        [0, 0, 0, 0, 0, 0, 0], // Tuesday
+        [0, 0, 0, 0, 0, 0, 0], // Wednesday
+        [0, 0, 0, 0, 0, 0, 0], // Thursday
+        [0, 0, 0, 0, 0, 0, 0], // Friday
+        [0, 0, 0, 0, 0, 0, 0], // Saturday
+        [0, 0, 0, 0, 0, 0, 0]  // Sunday
+    ];
+
+    dailyData.forEach(day => {
+        const date = new Date(day.date);
+        const dayOfWeek = (date.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+        
+        // Distribute work minutes across day hours (simplified)
+        const intensity = Math.min(5, Math.floor((day.totalWorkMinutes || 0) / 60)); // Convert minutes to intensity (0-5)
+        
+        // Simulate hourly distribution based on typical study patterns
+        if (intensity > 0) {
+            // Morning (9-12)
+            weeklyActivity[dayOfWeek][2] = Math.max(weeklyActivity[dayOfWeek][2], Math.min(intensity, 3));
+            // Afternoon (13-17)
+            weeklyActivity[dayOfWeek][3] = Math.max(weeklyActivity[dayOfWeek][3], intensity);
+            // Evening (18-21)
+            weeklyActivity[dayOfWeek][4] = Math.max(weeklyActivity[dayOfWeek][4], Math.min(intensity, 4));
+        }
+    });
+
+    return weeklyActivity;
 }
 
 function createCharts() {

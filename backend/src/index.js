@@ -19,6 +19,7 @@ import aiRecommendationRoutes from '../routes/aiRecommendationRoutes.js';
 
 // Import database connection
 import { connectDB } from '../lib/db.js';
+import { startReminderScheduler } from '../services/reminderService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,4 +85,6 @@ app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     connectDB();
+    // Start reminder scheduler after DB connect; scheduler is idempotent if called repeatedly
+    startReminderScheduler();
 });

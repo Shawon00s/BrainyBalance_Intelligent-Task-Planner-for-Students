@@ -43,6 +43,10 @@ async function initializeDashboard() {
         console.log('Loading notifications...');
         await loadNotifications();
 
+        // Load AI recommendations
+        console.log('Loading AI recommendations...');
+        await loadAIRecommendations();
+
         // Set up event listeners
         console.log('Setting up event listeners...');
         setupEventListeners();
@@ -1195,6 +1199,192 @@ function showError(message) {
     showMessage(message, 'error');
 }
 
+// Load AI Recommendations
+async function loadAIRecommendations() {
+    try {
+        const response = await fetch(`${API_BASE}/ai-recommendations`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('AI Recommendations loaded:', data);
+            updateAIRecommendations(data.recommendations || []);
+        } else {
+            console.log('AI Recommendations endpoint not available, using default data');
+            updateAIRecommendations([]);
+        }
+    } catch (error) {
+        console.error('Error loading AI recommendations:', error);
+        updateAIRecommendations([]);
+    }
+}
+
+// Update AI Recommendations display
+function updateAIRecommendations(recommendations) {
+    const container = document.getElementById('aiRecommendationsContainer');
+    if (!container) {
+        console.error('AI Recommendations container not found');
+        return;
+    }
+
+    // Clear existing content
+    container.innerHTML = '';
+
+    if (recommendations.length === 0) {
+        // Show default recommendations when no data is available
+        container.innerHTML = `
+            <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-4">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                    <span class="font-medium text-yellow-400">Welcome!</span>
+                </div>
+                <p class="text-gray-300 text-sm">Start by adding some tasks to get personalized AI recommendations!</p>
+            </div>
+            <div class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-robot text-purple-400 mr-2"></i>
+                    <span class="font-medium text-purple-400">AI Learning</span>
+                </div>
+                <p class="text-gray-300 text-sm">Our AI will analyze your patterns and provide smart suggestions.</p>
+            </div>
+            <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                <div class="flex items-center mb-2">
+                    <i class="fas fa-magic text-green-400 mr-2"></i>
+                    <span class="font-medium text-green-400">Generate Recommendations</span>
+                </div>
+                <p class="text-gray-300 text-sm">Click "Generate New Recommendations" below to get AI-powered insights!</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Display actual recommendations
+    recommendations.forEach(rec => {
+        const confidence = rec.confidence || 80;
+        const priorityColors = {
+            'urgent': { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400' },
+            'high': { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400' },
+            'medium': { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400' },
+            'low': { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400' }
+        };
+
+        const typeIcons = {
+            'task_priority': 'fas fa-exclamation-circle',
+            'study_time': 'fas fa-clock',
+            'workload_balance': 'fas fa-balance-scale',
+            'deadline_alert': 'fas fa-calendar-times',
+            'pattern_suggestion': 'fas fa-lightbulb',
+            'schedule_optimization': 'fas fa-calendar-plus'
+        };
+
+        const colors = priorityColors[rec.priority] || priorityColors['medium'];
+        const icon = typeIcons[rec.type] || 'fas fa-robot';
+
+        const recElement = document.createElement('div');
+        recElement.className = `${colors.bg} border ${colors.border} rounded-lg p-4`;
+        recElement.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center">
+                    <i class="${icon} ${colors.text} mr-2"></i>
+                    <span class="font-medium ${colors.text}">${rec.title}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-400">${confidence}% confident</span>
+                    ${rec.isApplied ? '<i class="fas fa-check text-green-400 text-xs"></i>' : ''}
+                </div>
+            </div>
+            <p class="text-gray-300 text-sm mb-2">${rec.description}</p>
+            <div class="flex space-x-2">
+                ${!rec.isApplied ? `
+                    <button onclick="applyRecommendation('${rec._id}')" 
+                            class="text-xs px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 rounded hover:bg-indigo-500/30 transition-colors">
+                        Apply
+                    </button>
+                ` : ''}
+                <button onclick="dismissRecommendation('${rec._id}')" 
+                        class="text-xs px-3 py-1 bg-gray-500/20 border border-gray-500/30 text-gray-400 rounded hover:bg-gray-500/30 transition-colors">
+                    Dismiss
+                </button>
+            </div>
+        `;
+        container.appendChild(recElement);
+    });
+}
+
+// Apply AI Recommendation
+async function applyRecommendation(recommendationId) {
+    try {
+        const response = await fetch(`${API_BASE}/ai-recommendations/${recommendationId}/apply`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Recommendation applied successfully!', 'success');
+            await loadAIRecommendations(); // Reload recommendations
+        } else {
+            showMessage('Failed to apply recommendation', 'error');
+        }
+    } catch (error) {
+        console.error('Error applying recommendation:', error);
+        showMessage('Error applying recommendation', 'error');
+    }
+}
+
+// Dismiss AI Recommendation
+async function dismissRecommendation(recommendationId) {
+    try {
+        const response = await fetch(`${API_BASE}/ai-recommendations/${recommendationId}/dismiss`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            showMessage('Recommendation dismissed', 'success');
+            await loadAIRecommendations(); // Reload recommendations
+        } else {
+            showMessage('Failed to dismiss recommendation', 'error');
+        }
+    } catch (error) {
+        console.error('Error dismissing recommendation:', error);
+        showMessage('Error dismissing recommendation', 'error');
+    }
+}
+
+// Generate new AI recommendations
+async function generateNewRecommendations() {
+    try {
+        const response = await fetch(`${API_BASE}/ai-recommendations/generate`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            showMessage(`Generated ${data.count} new recommendations!`, 'success');
+            await loadAIRecommendations(); // Reload recommendations
+        } else {
+            showMessage('Failed to generate recommendations', 'error');
+        }
+    } catch (error) {
+        console.error('Error generating recommendations:', error);
+        showMessage('Error generating recommendations', 'error');
+    }
+}
+
 function showMessage(message, type) {
     // Create or update message element
     let messageEl = document.getElementById('dashboardMessage');
@@ -1218,3 +1408,6 @@ function showMessage(message, type) {
 // Global functions for onclick handlers
 window.toggleTaskStatus = toggleTaskStatus;
 window.markNotificationRead = markNotificationRead;
+window.applyRecommendation = applyRecommendation;
+window.dismissRecommendation = dismissRecommendation;
+window.generateNewRecommendations = generateNewRecommendations;
