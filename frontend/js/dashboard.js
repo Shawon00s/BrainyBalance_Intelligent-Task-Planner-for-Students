@@ -146,45 +146,109 @@ async function loadDashboardData() {
                 const tasksData = await tasksResponse.json();
                 dashboardData.allTasks = tasksData.tasks || tasksData;
 
+                console.log('All tasks loaded:', dashboardData.allTasks);
+                console.log('Number of tasks:', dashboardData.allTasks.length);
+
                 // Filter tasks for today (due today or marked for today)
                 const today = new Date();
                 const todayStr = today.toISOString().split('T')[0];
 
+                console.log('Today is:', todayStr);
+
+                // Filter tasks for TODAY ONLY (strict date matching)
                 dashboardData.todayTasks = dashboardData.allTasks.filter(task => {
-                    // Include tasks due today
                     if (task.dueDate) {
                         const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
-                        if (taskDate === todayStr) return true;
+                        return taskDate === todayStr;
                     }
-
-                    // Include tasks due in the next 3 days that are not completed
-                    if (task.dueDate && task.status !== 'completed') {
-                        const taskDate = new Date(task.dueDate);
-                        const threeDaysFromNow = new Date();
-                        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
-                        if (taskDate <= threeDaysFromNow && taskDate >= today) {
-                            return true;
-                        }
-                    }
-
-                    // Include high priority pending tasks
-                    if (task.priority === 'high' && task.status === 'pending') {
-                        return true;
-                    }
-
                     return false;
                 });
 
-                // Filter upcoming tasks (next 7 days)
-                const nextWeek = new Date();
-                nextWeek.setDate(nextWeek.getDate() + 7);
-                dashboardData.upcomingTasks = dashboardData.allTasks.filter(task => {
-                    if (task.dueDate) {
-                        const taskDate = new Date(task.dueDate);
-                        return taskDate > today && taskDate <= nextWeek;
+                // Filter overdue tasks (past due dates)
+                dashboardData.overdueTasks = dashboardData.allTasks.filter(task => {
+                    if (task.dueDate && task.status !== 'completed') {
+                        const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+                        return taskDate < todayStr;
                     }
                     return false;
+                });
+
+                // Filter upcoming tasks (future dates, next 7 days)
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                nextWeek.setHours(23, 59, 59, 999); // Include the entire last day
+
+                dashboardData.upcomingTasks = dashboardData.allTasks.filter(task => {
+                    if (task.dueDate && task.status !== 'completed') {
+                        // Handle multiple date formats
+                        let taskDate;
+                        if (task.dueDate.includes('/')) {
+                            // Handle formats like "4/9/2025" or "9/4/2025"
+                            const parts = task.dueDate.split('/');
+                            if (parts.length === 3) {
+                                // Assume MM/DD/YYYY format first
+                                const month = parseInt(parts[0]) - 1; // Month is 0-indexed
+                                const day = parseInt(parts[1]);
+                                const year = parseInt(parts[2]);
+                                taskDate = new Date(year, month, day);
+
+                                // If that creates an invalid date, try DD/MM/YYYY
+                                if (isNaN(taskDate.getTime()) || month > 11) {
+                                    const month2 = parseInt(parts[1]) - 1;
+                                    const day2 = parseInt(parts[0]);
+                                    taskDate = new Date(year, month2, day2);
+                                }
+                            }
+                        } else {
+                            taskDate = new Date(task.dueDate);
+                        }
+
+                        const taskDateStr = taskDate.toISOString().split('T')[0];
+                        const todayDate = new Date(todayStr + 'T00:00:00.000Z');
+
+                        // Task is upcoming if it's after today and within next 7 days
+                        const isAfterToday = taskDate > todayDate;
+                        const isWithinWeek = taskDate <= nextWeek;
+                        const isUpcoming = isAfterToday && isWithinWeek;
+
+                        console.log(`Task: ${task.title}`);
+                        console.log(`  Original Due Date: ${task.dueDate}`);
+                        console.log(`  Parsed Date Object: ${taskDate}`);
+                        console.log(`  Task Date String: ${taskDateStr}`);
+                        console.log(`  Today String: ${todayStr}`);
+                        console.log(`  Today Date Object: ${todayDate}`);
+                        console.log(`  Next Week: ${nextWeek}`);
+                        console.log(`  After Today: ${isAfterToday}`);
+                        console.log(`  Within Week: ${isWithinWeek}`);
+                        console.log(`  Status: ${task.status}`);
+                        console.log(`  Is Upcoming: ${isUpcoming}`);
+                        console.log('---');
+
+                        return isUpcoming;
+                    }
+                    return false;
+                });
+
+                console.log(`Found ${dashboardData.upcomingTasks.length} upcoming tasks:`, dashboardData.upcomingTasks);
+
+                // Filter past tasks (completed tasks from last 30 days)
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                dashboardData.pastTasks = dashboardData.allTasks.filter(task => {
+                    if (task.status === 'completed') {
+                        // If has completion date, use that; otherwise use due date
+                        const completedDate = task.completedAt || task.updatedAt || task.dueDate;
+                        if (completedDate) {
+                            const taskDate = new Date(completedDate);
+                            return taskDate >= thirtyDaysAgo && taskDate <= today;
+                        }
+                    }
+                    return false;
+                }).sort((a, b) => {
+                    // Sort by completion date (most recent first)
+                    const dateA = new Date(a.completedAt || a.updatedAt || a.dueDate);
+                    const dateB = new Date(b.completedAt || b.updatedAt || b.dueDate);
+                    return dateB - dateA;
                 });
 
                 // Update analytics with actual task data
@@ -437,7 +501,11 @@ function setupFallbackData() {
 // Update dashboard UI with current data
 function updateDashboardUI() {
     updateQuickStats();
+    updateCurrentDate();
     updateTodayTasks();
+    updateOverdueTasks();
+    updateUpcomingTasksMain();
+    updatePastTasks();
     updateUpcomingTasks();
     updateProductivityChart();
 }
@@ -541,10 +609,27 @@ function updateStatElement(elementId, value) {
     }
 }
 
+// Update current date display
+function updateCurrentDate() {
+    const currentDateEl = document.getElementById('currentDate');
+    if (currentDateEl) {
+        const today = new Date();
+        const options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
+        currentDateEl.textContent = today.toLocaleDateString('en-US', options);
+    }
+}
+
 // Update today's tasks display
 function updateTodayTasks() {
     try {
         const container = document.getElementById('todayTasksList');
+        const countEl = document.getElementById('todayTasksCount');
+
         if (!container) {
             console.log('todayTasksList element not found');
             return;
@@ -552,24 +637,17 @@ function updateTodayTasks() {
 
         console.log('Dashboard data today tasks:', dashboardData.todayTasks);
 
+        // Update count
+        const todayCount = dashboardData.todayTasks ? dashboardData.todayTasks.length : 0;
+        if (countEl) countEl.textContent = todayCount;
+
         if (!dashboardData.todayTasks || dashboardData.todayTasks.length === 0) {
-            // If no tasks for today, show a helpful message with upcoming tasks
+            // If no tasks for today, show a helpful message
             let message = '<div class="text-center text-gray-400 py-8">';
             message += '<i class="fas fa-calendar-check text-3xl mb-3 opacity-50"></i>';
             message += '<p class="text-sm">No tasks scheduled for today</p>';
-
-            // Check if there are any pending tasks at all
-            if (dashboardData.allTasks && dashboardData.allTasks.length > 0) {
-                const pendingTasks = dashboardData.allTasks.filter(task => task.status === 'pending');
-                if (pendingTasks.length > 0) {
-                    message += '<p class="text-xs mt-2">You have ' + pendingTasks.length + ' pending tasks</p>';
-                    message += '<a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-xs">View all tasks →</a>';
-                }
-            } else {
-                message += '<p class="text-xs mt-2">Start by creating your first task!</p>';
-                message += '<a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-xs">Create task →</a>';
-            }
-
+            message += '<p class="text-xs mt-2 text-green-400">Enjoy your free day or create new tasks!</p>';
+            message += '<a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2 inline-block">Create task →</a>';
             message += '</div>';
             container.innerHTML = message;
             return;
@@ -617,38 +695,259 @@ function updateTodayTasks() {
     }
 }
 
+// Update overdue tasks display
+function updateOverdueTasks() {
+    try {
+        const container = document.getElementById('overdueTasksList');
+        const section = document.getElementById('overdueSection');
+        const countEl = document.getElementById('overdueTasksCount');
+
+        if (!container || !section) return;
+
+        const overdueCount = dashboardData.overdueTasks ? dashboardData.overdueTasks.length : 0;
+        if (countEl) countEl.textContent = overdueCount;
+
+        if (overdueCount === 0) {
+            section.classList.add('hidden');
+            return;
+        }
+
+        // Show overdue section if there are overdue tasks
+        section.classList.remove('hidden');
+
+        container.innerHTML = dashboardData.overdueTasks.map(task => {
+            const daysOverdue = Math.floor((new Date() - new Date(task.dueDate)) / (1000 * 60 * 60 * 24));
+            return `
+                <div class="task-item bg-red-900/20 p-4 rounded-lg border border-red-500/30 hover:border-red-400 transition-colors" data-task-id="${task.id || task._id}">
+                    <div class="task-content">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white mb-1">${escapeHtml(task.title)}</h4>
+                                ${task.description ? `<p class="text-sm text-gray-400 mb-2">${escapeHtml(task.description)}</p>` : ''}
+                                <div class="flex gap-2 mt-2">
+                                    <span class="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400">
+                                        ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full ${getPriorityBadgeColor(task.priority)}">
+                                        ${(task.priority || 'medium').toUpperCase()}
+                                    </span>
+                                    ${task.category ? `<span class="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">${task.category}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 ml-4">
+                                <div class="text-right">
+                                    <p class="text-xs text-red-400">Was due</p>
+                                    <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                                </div>
+                                <button onclick="toggleTaskFromDashboard('${task._id || task.id}')" 
+                                        class="text-gray-400 hover:text-green-400 transition-colors">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error updating overdue tasks:', error);
+    }
+}
+
 // Update upcoming tasks display
 function updateUpcomingTasks() {
     const container = document.getElementById('upcomingTasksList');
+    const countEl = document.getElementById('upcomingTasksCount');
+
     if (!container) return;
 
+    const upcomingCount = dashboardData.upcomingTasks ? dashboardData.upcomingTasks.length : 0;
+    if (countEl) countEl.textContent = upcomingCount;
+
     if (!dashboardData.upcomingTasks || dashboardData.upcomingTasks.length === 0) {
-        container.innerHTML = '<p class="no-tasks">No upcoming tasks</p>';
+        container.innerHTML = `
+            <div class="text-center text-gray-400 py-4">
+                <i class="fas fa-calendar-plus text-2xl mb-2 opacity-50"></i>
+                <p class="text-sm">No upcoming tasks in the next 7 days</p>
+                <a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-xs mt-2 inline-block">Plan ahead →</a>
+            </div>
+        `;
         return;
     }
 
-    // Filter out today's tasks and limit to next 5
-    const today = new Date().toISOString().split('T')[0];
+    // Limit to next 5 upcoming tasks and sort by date
     const upcoming = dashboardData.upcomingTasks
-        .filter(task => task.dueDate && task.dueDate.split('T')[0] > today)
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
         .slice(0, 5);
 
-    if (upcoming.length === 0) {
-        container.innerHTML = '<p class="no-tasks">No upcoming tasks</p>';
-        return;
-    }
-
-    container.innerHTML = upcoming.map(task => `
-        <div class="task-item upcoming" data-task-id="${task._id}">
-            <div class="task-content">
-                <h4>${escapeHtml(task.title)}</h4>
-                <div class="task-meta">
-                    <span class="priority priority-${task.priority}">${task.priority}</span>
-                    <span class="due-date">${formatDate(task.dueDate)}</span>
+    container.innerHTML = upcoming.map(task => {
+        const daysUntil = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+        return `
+            <div class="task-item upcoming bg-dark-surface p-3 rounded-lg border border-dark-border hover:border-indigo-500/50 transition-colors" data-task-id="${task._id}">
+                <div class="task-content">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-white text-sm mb-1">${escapeHtml(task.title)}</h4>
+                            <div class="flex gap-2 mt-1">
+                                <span class="text-xs px-2 py-1 rounded-full ${getPriorityBadgeColor(task.priority)}">
+                                    ${(task.priority || 'medium').toUpperCase()}
+                                </span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
+                                    In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400">Due</p>
+                            <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+// Update upcoming tasks display (main section)
+function updateUpcomingTasksMain() {
+    try {
+        console.log('updateUpcomingTasksMain called');
+        const container = document.getElementById('upcomingTasksMainList');
+        const countEl = document.getElementById('upcomingTasksMainCount');
+
+        console.log('Container found:', !!container);
+        console.log('Count element found:', !!countEl);
+        console.log('Upcoming tasks data:', dashboardData.upcomingTasks);
+
+        if (!container) {
+            console.log('upcomingTasksMainList container not found');
+            return;
+        }
+
+        const upcomingCount = dashboardData.upcomingTasks ? dashboardData.upcomingTasks.length : 0;
+        console.log('Upcoming count:', upcomingCount);
+
+        if (countEl) countEl.textContent = upcomingCount; if (!dashboardData.upcomingTasks || dashboardData.upcomingTasks.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <i class="fas fa-calendar-plus text-3xl mb-3 opacity-50"></i>
+                    <p class="text-sm">No upcoming tasks in the next 7 days</p>
+                    <a href="tasks.html" class="text-blue-400 hover:text-blue-300 text-xs mt-2 inline-block">Plan ahead →</a>
+                </div>
+            `;
+            return;
+        }
+
+        // Show all upcoming tasks (not limited to 5)
+        const upcoming = dashboardData.upcomingTasks
+            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+        container.innerHTML = upcoming.map(task => {
+            const daysUntil = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+            return `
+                <div class="task-item bg-dark-surface p-4 rounded-lg border border-dark-border hover:border-blue-500/50 transition-colors" data-task-id="${task._id}">
+                    <div class="task-content">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white mb-1">${escapeHtml(task.title)}</h4>
+                                ${task.description ? `<p class="text-sm text-gray-400 mb-2">${escapeHtml(task.description)}</p>` : ''}
+                                <div class="flex gap-2 mt-2">
+                                    <span class="text-xs px-2 py-1 rounded-full ${getPriorityBadgeColor(task.priority)}">
+                                        ${(task.priority || 'medium').toUpperCase()}
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full ${getStatusBadgeColor(task.status)}">
+                                        ${(task.status || 'pending').toUpperCase()}
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
+                                        In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}
+                                    </span>
+                                    ${task.category ? `<span class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">${task.category}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 ml-4">
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-400">Due</p>
+                                    <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                                </div>
+                                <button onclick="toggleTaskFromDashboard('${task._id || task.id}')" 
+                                        class="text-gray-400 hover:text-green-400 transition-colors">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error updating upcoming tasks main:', error);
+    }
+}
+
+// Update past tasks display
+function updatePastTasks() {
+    try {
+        const container = document.getElementById('pastTasksList');
+        const countEl = document.getElementById('pastTasksCount');
+
+        if (!container) return;
+
+        const pastCount = dashboardData.pastTasks ? dashboardData.pastTasks.length : 0;
+        if (countEl) countEl.textContent = pastCount;
+
+        if (!dashboardData.pastTasks || dashboardData.pastTasks.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-8">
+                    <i class="fas fa-check-circle text-3xl mb-3 opacity-50"></i>
+                    <p class="text-sm">No recently completed tasks</p>
+                    <p class="text-xs mt-2">Complete some tasks to see them here!</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show up to 10 most recent completed tasks
+        const recentPast = dashboardData.pastTasks.slice(0, 10);
+
+        container.innerHTML = recentPast.map(task => {
+            const completedDate = new Date(task.completedAt || task.updatedAt || task.dueDate);
+            const daysAgo = Math.floor((new Date() - completedDate) / (1000 * 60 * 60 * 24));
+
+            return `
+                <div class="task-item bg-green-900/20 p-4 rounded-lg border border-green-500/30 hover:border-green-400 transition-colors" data-task-id="${task._id}">
+                    <div class="task-content">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-white mb-1">${escapeHtml(task.title)}</h4>
+                                ${task.description ? `<p class="text-sm text-gray-400 mb-2">${escapeHtml(task.description)}</p>` : ''}
+                                <div class="flex gap-2 mt-2">
+                                    <span class="text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400">
+                                        <i class="fas fa-check mr-1"></i>COMPLETED
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full ${getPriorityBadgeColor(task.priority)}">
+                                        ${(task.priority || 'medium').toUpperCase()}
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
+                                        ${daysAgo === 0 ? 'Today' : daysAgo === 1 ? '1 day ago' : `${daysAgo} days ago`}
+                                    </span>
+                                    ${task.category ? `<span class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">${task.category}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 ml-4">
+                                <div class="text-right">
+                                    <p class="text-xs text-green-400">Completed</p>
+                                    <p class="text-xs text-white">${formatTaskDate(completedDate)}</p>
+                                </div>
+                                <i class="fas fa-check-circle text-green-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error updating past tasks:', error);
+    }
 }
 
 // Update notifications display

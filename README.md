@@ -6,12 +6,18 @@ A comprehensive full-stack web application designed to help students manage thei
 
 - **User Authentication** - Secure registration and login system with JWT
 - **Task Management** - Create, edit, and organize tasks with priorities and categories
-- **Smart Dashboard** - Real-time analytics and productivity insights
+- **Smart Dashboard** - Real-time analytics and productivity insights with:
+  - Today's Tasks (filtered by current date)
+  - Overdue Tasks tracking
+  - Upcoming Tasks preview
+  - Past Tasks history
 - **Pomodoro Timer** - Built-in time tracking and productivity sessions
 - **Schedule Management** - Calendar integration for better time planning
 - **Analytics & Insights** - Track productivity patterns and performance
-- **Notification System** - Smart reminders and alerts
+- **Notification System** - Smart reminders and alerts with real-time updates
 - **Responsive Design** - Modern dark theme with mobile support
+- **AI Recommendations** - Intelligent task planning suggestions
+- **Calendar Integration** - External calendar sync capabilities
 
 ## 🛠 Tech Stack
 
@@ -45,14 +51,19 @@ BrainyBalance_Intelligent-Task-Planner-for-Students/
 │   │   ├── Schedule.js           # Schedule schema and model
 │   │   ├── Pomodoro.js           # Pomodoro session model
 │   │   ├── Analytics.js          # Analytics data model
-│   │   └── Notification.js       # Notification model
+│   │   ├── Notification.js       # Notification model
+│   │   ├── AIRecommendation.js   # AI recommendation model
+│   │   ├── CalendarIntegration.js # Calendar sync model
+│   │   └── UserPreferences.js    # User preferences model
 │   ├── routes/
 │   │   ├── authRoutes.js         # Authentication endpoints
 │   │   ├── taskRoutes.js         # Task management endpoints
 │   │   ├── scheduleRoutes.js     # Schedule management endpoints
 │   │   ├── pomodoroRoutes.js     # Pomodoro timer endpoints
 │   │   ├── analyticsRoutes.js    # Analytics endpoints
-│   │   └── notificationRoutes.js # Notification endpoints
+│   │   ├── notificationRoutes.js # Notification endpoints
+│   │   ├── calendarRoutes.js     # Calendar integration endpoints
+│   │   └── aiRecommendationRoutes.js # AI recommendation endpoints
 │   ├── src/
 │   │   └── index.js              # Main server file
 │   ├── .env                      # Environment variables
@@ -110,21 +121,34 @@ PORT=3000
 
 4. Start the backend server:
 ```bash
-npm start
-```
-or for development:
-```bash
 npm run dev
 ```
+or for production:
+```bash
+npm start
+```
+
+**Note**: The server runs on port 3000 by default and includes:
+- Health check endpoint: `http://localhost:3000/api/health`
+- Database connection monitoring
+- Automatic error handling and logging
 
 ### Frontend Setup
 
+The frontend is a static web application that can be served directly or through the backend.
+
+**Option 1: Access through Backend (Recommended)**
+1. Start the backend server as described above
+2. Open your browser and navigate to `http://localhost:3000`
+3. The backend serves the frontend files automatically
+
+**Option 2: Serve Frontend Separately**
 1. Navigate to the frontend directory:
 ```bash
 cd frontend
 ```
 
-2. Open `login.html` in a web browser or serve using a local server:
+2. Serve using a local server:
 ```bash
 # Using Python
 python -m http.server 8000
@@ -178,19 +202,41 @@ npx http-server -p 8000
 
 ### Notifications
 - `GET /api/notifications` - Get user notifications
+- `GET /api/notifications/unread` - Get unread notifications
+- `GET /api/notifications/unread/count` - Get unread notification count
 - `POST /api/notifications` - Create notification
 - `PATCH /api/notifications/:id/read` - Mark as read
 - `DELETE /api/notifications/:id` - Delete notification
 
+### Calendar Integration
+- `GET /api/calendar/integrations` - Get calendar integrations
+- `POST /api/calendar/integrations` - Create calendar integration
+- `PUT /api/calendar/integrations/:id` - Update integration
+- `DELETE /api/calendar/integrations/:id` - Remove integration
+
+### AI Recommendations
+- `GET /api/ai-recommendations` - Get AI recommendations
+- `POST /api/ai-recommendations/generate` - Generate new recommendations
+- `PUT /api/ai-recommendations/:id` - Update recommendation status
+
 ## 📝 Database Schema
 
 The application uses MongoDB with the following collections:
-- **users** - User accounts and authentication
-- **tasks** - Task management and tracking
+- **users** - User accounts and authentication data
+- **tasks** - Task management and tracking with deadline filtering
 - **schedules** - Calendar and schedule items
 - **pomodoros** - Pomodoro sessions and intervals
-- **analytics** - Daily productivity metrics
-- **notifications** - System notifications and alerts
+- **analytics** - Daily productivity metrics and trends
+- **notifications** - System notifications and user alerts
+- **airecommendations** - AI-generated task recommendations
+- **calendarintegrations** - External calendar sync data
+- **userpreferences** - User settings and preferences
+
+### Key Features:
+- Optimized indexes for performance
+- User-scoped data isolation
+- Date-based filtering for tasks
+- Real-time notification system
 
 ## 🔒 Security Features
 
@@ -200,14 +246,47 @@ The application uses MongoDB with the following collections:
 - Input validation and sanitization
 - CORS configuration
 
+## 🛠 Troubleshooting
+
+### Common Issues
+
+**1. Server fails to start**
+- Check if MongoDB connection string is correct in `.env`
+- Ensure Node.js version is 14 or higher
+- Verify all dependencies are installed with `npm install`
+
+**2. Database connection errors**
+- Verify MongoDB Atlas connection string
+- Check network connectivity
+- Ensure database user has proper permissions
+
+**3. Frontend not loading**
+- Start the backend server first
+- Check if port 3000 is available
+- Clear browser cache and cookies
+
+**4. Tasks not displaying correctly**
+- Verify date format in task creation
+- Check browser console for JavaScript errors
+- Ensure proper authentication token
+
+**5. Mongoose duplicate index warnings**
+- This is a harmless warning about database indexes
+- Can be ignored in development
+- Consider dropping and recreating indexes in production
+
 ## 🎨 Design Features
 
-- Modern dark theme
-- Responsive design for all devices
-- Intuitive user interface
-- Real-time data updates
-- Interactive charts and visualizations
+- Modern dark theme with elegant UI
+- Responsive design for all devices (mobile, tablet, desktop)
+- Intuitive user interface with smooth navigation
+- Real-time data updates without page refresh
+- Interactive charts and visualizations with Chart.js
 - Smooth animations and transitions
+- Tailwind CSS for consistent styling
+- Font Awesome icons for better UX
+- Date-aware task filtering and organization
+- Color-coded priority system for tasks
 
 ## 📊 Analytics & Insights
 
@@ -221,10 +300,32 @@ The application uses MongoDB with the following collections:
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
 3. Make your changes
 4. Test thoroughly
-5. Submit a pull request
+5. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+6. Push to the branch (`git push origin feature/AmazingFeature`)
+7. Submit a pull request
+
+## 📋 Changelog
+
+### Version 1.0.0 (Current)
+- ✅ Complete task management system
+- ✅ User authentication and authorization
+- ✅ Dashboard with date-filtered task views
+- ✅ Pomodoro timer integration
+- ✅ Analytics and productivity tracking
+- ✅ Notification system
+- ✅ Calendar integration support
+- ✅ AI recommendation framework
+- ✅ Responsive design implementation
+
+### Recent Improvements
+- Enhanced dashboard task filtering by date
+- Added separate sections for today's, upcoming, and past tasks
+- Improved notification API endpoints
+- Better error handling and debugging
+- Optimized database queries with proper indexing
 
 ## 📄 License
 

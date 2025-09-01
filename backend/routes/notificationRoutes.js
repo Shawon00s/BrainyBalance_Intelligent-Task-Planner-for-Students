@@ -67,6 +67,28 @@ router.get("/unread/count", authMiddleware, async (req, res) => {
     }
 });
 
+// Get unread notifications
+router.get("/unread", authMiddleware, async (req, res) => {
+    try {
+        const { limit = 10 } = req.query;
+
+        const notifications = await Notification.find({
+            userId: req.user._id,
+            readAt: null
+        })
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit));
+
+        res.json({
+            notifications,
+            count: notifications.length
+        });
+    } catch (error) {
+        console.error('Get unread notifications error:', error);
+        res.status(500).json({ error: 'Server error while fetching unread notifications' });
+    }
+});
+
 // Create a new notification
 router.post("/", authMiddleware, async (req, res) => {
     try {

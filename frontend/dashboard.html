@@ -380,12 +380,76 @@
                         <h2 class="text-xl font-semibold flex items-center">
                             <i class="fas fa-calendar-day text-indigo-400 mr-2"></i>
                             Today's Tasks
+                            <span id="todayTasksCount"
+                                class="ml-2 text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-full">0</span>
                         </h2>
-                        <a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-sm">View All</a>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-xs text-gray-400" id="currentDate"></span>
+                            <a href="tasks.html" class="text-indigo-400 hover:text-indigo-300 text-sm">View All</a>
+                        </div>
                     </div>
                     <div id="todayTasksList" class="space-y-4">
                         <div class="text-center text-gray-400 py-8">
-                            Loading tasks...
+                            Loading today's tasks...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overdue Tasks (if any) -->
+                <div id="overdueSection" class="bg-gradient-card rounded-xl p-6 border border-red-500/30 hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center text-red-400">
+                            <i class="fas fa-exclamation-triangle text-red-400 mr-2"></i>
+                            Overdue Tasks
+                            <span id="overdueTasksCount"
+                                class="ml-2 text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">0</span>
+                        </h2>
+                        <a href="tasks.html?filter=overdue" class="text-red-400 hover:text-red-300 text-sm">View All</a>
+                    </div>
+                    <div id="overdueTasksList" class="space-y-4">
+                    </div>
+                </div>
+
+                <!-- Upcoming Tasks -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-calendar-alt text-blue-400 mr-2"></i>
+                            Upcoming Tasks
+                            <span id="upcomingTasksMainCount"
+                                class="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">0</span>
+                        </h2>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-xs text-gray-400">Next 7 days</span>
+                            <a href="tasks.html?filter=upcoming" class="text-blue-400 hover:text-blue-300 text-sm">View
+                                All</a>
+                        </div>
+                    </div>
+                    <div id="upcomingTasksMainList" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading upcoming tasks...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Past Tasks -->
+                <div class="bg-gradient-card rounded-xl p-6 border border-dark-border">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-history text-green-400 mr-2"></i>
+                            Past Tasks
+                            <span id="pastTasksCount"
+                                class="ml-2 text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">0</span>
+                        </h2>
+                        <div class="flex items-center space-x-4">
+                            <span class="text-xs text-gray-400">Recently completed</span>
+                            <a href="tasks.html?filter=completed"
+                                class="text-green-400 hover:text-green-300 text-sm">View All</a>
+                        </div>
+                    </div>
+                    <div id="pastTasksList" class="space-y-4">
+                        <div class="text-center text-gray-400 py-8">
+                            Loading past tasks...
                         </div>
                     </div>
                 </div>
@@ -424,7 +488,10 @@
                     <h2 class="text-xl font-semibold mb-4 flex items-center">
                         <i class="fas fa-calendar-alt text-indigo-400 mr-2"></i>
                         Upcoming Tasks
+                        <span id="upcomingTasksCount"
+                            class="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">0</span>
                     </h2>
+                    <div class="text-xs text-gray-400 mb-4">Next 7 days</div>
                     <div id="upcomingTasksList" class="space-y-3">
                         <div class="text-center text-gray-400 py-4">
                             Loading upcoming tasks...
