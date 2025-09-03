@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize schedule page
     initializeSchedulePage();
     setupEventListeners();
+    loadUserProfile();
     loadScheduleData();
     updateCurrentWeek();
 });
@@ -180,27 +181,7 @@ async function loadScheduleEntries(startDate, endDate) {
         return response.schedules || [];
     } catch (error) {
         console.log('No schedule entries found or error loading:', error.message);
-
-        // Return demo schedule entries
-        console.log('Using demo schedule data');
-        return [
-            {
-                id: 'demo-schedule-1',
-                title: 'Study Session',
-                description: 'CSE327 Project Work',
-                startTime: '2025-09-04T09:00:00.000Z',
-                endTime: '2025-09-04T11:00:00.000Z',
-                type: 'study'
-            },
-            {
-                id: 'demo-schedule-2',
-                title: 'Mathematics Class',
-                description: 'Calculus Review',
-                startTime: '2025-09-05T14:00:00.000Z',
-                endTime: '2025-09-05T16:00:00.000Z',
-                type: 'class'
-            }
-        ];
+        return [];
     }
 }
 
@@ -229,51 +210,7 @@ async function loadTasksForWeek(startDate, endDate) {
 
     } catch (error) {
         console.error('Error loading tasks:', error);
-
-        // Return demo data if API fails
-        console.log('Using demo task data for schedule');
-        return [
-            {
-                id: 'demo-1',
-                title: 'CSE327 Project Defense',
-                description: 'Project Defense Presentation',
-                priority: 'medium',
-                category: 'Project',
-                deadline: '2025-09-05T07:15:00.000Z',  // 7:15 AM
-                createdAt: '2025-09-01T09:30:00.000Z',
-                status: 'pending'
-            },
-            {
-                id: 'demo-2',
-                title: 'Mathematics Assignment',
-                description: 'Complete calculus problems',
-                priority: 'high',
-                category: 'Assignment',
-                deadline: '2025-09-04T13:03:00.000Z',  // 1:03 PM - testing minutes
-                createdAt: '2025-08-30T14:22:00.000Z',
-                status: 'pending'
-            },
-            {
-                id: 'demo-3',
-                title: 'Research Paper',
-                description: 'AI in Education research',
-                priority: 'high',
-                category: 'Research',
-                deadline: '2025-09-06T16:45:00.000Z',  // 4:45 PM - testing minutes
-                createdAt: '2025-08-28T11:15:00.000Z',
-                status: 'pending'
-            },
-            {
-                id: 'demo-4',
-                title: 'Team Meeting',
-                description: 'Weekly project sync',
-                priority: 'low',
-                category: 'Meeting',
-                deadline: '2025-09-03T10:30:00.000Z',  // 10:30 AM - testing minutes
-                createdAt: '2025-09-02T16:00:00.000Z',
-                status: 'pending'
-            }
-        ];
+        return [];
     }
 }
 
@@ -424,16 +361,18 @@ function addTaskItemToCell(cell, task, hour) {
     const color = priorityColors[task.priority] || 'blue';
 
     const taskItem = document.createElement('div');
-    taskItem.className = `absolute inset-1 bg-${color}-500/20 border border-${color}-500/50 rounded px-2 py-1 text-xs hover:bg-${color}-500/30 transition-colors cursor-pointer`;
-
-    // Only show task title - clean and simple
+    taskItem.className = `absolute inset-1 bg-${color}-500/20 border border-${color}-500/50 rounded p-2 text-xs hover:bg-${color}-500/30 transition-colors group cursor-pointer`;
     taskItem.innerHTML = `
-        <div class="font-medium text-${color}-400 truncate" title="${task.title}">
-            ${task.title}
+        <div class="flex items-center justify-between mb-1">
+            <div class="font-medium text-${color}-400 truncate flex-1">${task.title}</div>
+            <i class="fas fa-exclamation-triangle text-${color}-400 text-xs ml-1" title="Task Deadline"></i>
         </div>
+        <div class="text-gray-400 text-xs">Due: ${formatDate(task.deadline)}</div>
+        ${task.description ? `<div class="text-gray-500 text-xs mt-1 truncate">${task.description}</div>` : ''}
+        <div class="text-xs text-${color}-300 mt-1">Priority: ${task.priority}</div>
     `;
 
-    // Add click handler to view full task details
+    // Add click handler to view task details
     taskItem.addEventListener('click', (e) => {
         e.stopPropagation();
         showTaskDetails(task);
@@ -881,188 +820,13 @@ async function deleteScheduleEntry(entry) {
 
 // Show task details
 function showTaskDetails(task) {
-    // Create modal overlay
-    const modalOverlay = document.createElement('div');
-    modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-
-    // Get priority colors
-    const priorityColors = {
-        'high': { bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500' },
-        'medium': { bg: 'bg-yellow-500', text: 'text-yellow-400', border: 'border-yellow-500' },
-        'low': { bg: 'bg-green-500', text: 'text-green-400', border: 'border-green-500' }
-    };
-
-    const colors = priorityColors[task.priority] || priorityColors['medium'];
-    const taskDate = new Date(task.deadline);
-
-    // Create modal content
-    modalOverlay.innerHTML = `
-        <div class="bg-dark-card border border-dark-border rounded-xl max-w-md w-full mx-4 transform transition-all duration-200 scale-95 modal-content">
-            <div class="p-6">
-                <!-- Header -->
-                <div class="flex items-start justify-between mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-3 h-3 ${colors.bg} rounded-full"></div>
-                        <h3 class="text-lg font-semibold text-white">${task.title}</h3>
-                    </div>
-                    <button class="text-gray-400 hover:text-white transition-colors close-modal">
-                        <i class="fas fa-times text-lg"></i>
-                    </button>
-                </div>
-                
-                <!-- Task Details -->
-                <div class="space-y-4">
-                    ${task.description ? `
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Description</label>
-                        <p class="text-gray-200 bg-dark-bg rounded-lg p-3">${task.description}</p>
-                    </div>
-                    ` : ''}
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Priority</label>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-2 h-2 ${colors.bg} rounded-full"></div>
-                                <span class="${colors.text} font-medium capitalize">${task.priority}</span>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Status</label>
-                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-            task.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                'bg-gray-500/20 text-gray-400'
-        }">
-                                ${task.status === 'in_progress' ? 'In Progress' : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    ${task.category ? `
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Category</label>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-500/20 text-indigo-400">
-                            <i class="fas fa-tag mr-2"></i>
-                            ${task.category}
-                        </span>
-                    </div>
-                    ` : ''}
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Due Date</label>
-                        <div class="bg-dark-bg rounded-lg p-3">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <div class="text-white font-medium">
-                                        ${taskDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        })}
-                                    </div>
-                                    <div class="text-gray-400 text-sm">
-                                        ${formatTime(task.deadline)}
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="text-sm text-gray-400">
-                                        ${getTimeRemaining(taskDate)}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    ${task.createdAt ? `
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Created</label>
-                        <div class="text-gray-300 text-sm">
-                            ${formatDateTime(task.createdAt)}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-                
-                <!-- Actions -->
-                <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-dark-border">
-                    <button class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors close-modal">
-                        Close
-                    </button>
-                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors" onclick="editTask('${task.id}')">
-                        <i class="fas fa-edit mr-2"></i>Edit Task
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Add to DOM
-    document.body.appendChild(modalOverlay);
-
-    // Animate in
-    setTimeout(() => {
-        modalOverlay.querySelector('.modal-content').style.transform = 'scale(1)';
-    }, 10);
-
-    // Close handlers
-    const closeButtons = modalOverlay.querySelectorAll('.close-modal');
-    closeButtons.forEach(button => {
-        button.addEventListener('click', () => closeTaskDetailsModal(modalOverlay));
-    });
-
-    // Close on overlay click
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) {
-            closeTaskDetailsModal(modalOverlay);
-        }
-    });
-
-    // Close on Escape key
-    const handleEscape = (e) => {
-        if (e.key === 'Escape') {
-            closeTaskDetailsModal(modalOverlay);
-            document.removeEventListener('keydown', handleEscape);
-        }
-    };
-    document.addEventListener('keydown', handleEscape);
-}
-
-// Helper function to close task details modal
-function closeTaskDetailsModal(modal) {
-    modal.querySelector('.modal-content').style.transform = 'scale(0.95)';
-    setTimeout(() => {
-        if (document.body.contains(modal)) {
-            document.body.removeChild(modal);
-        }
-    }, 150);
-}
-
-// Helper function to calculate time remaining
-function getTimeRemaining(dueDate) {
-    const now = new Date();
-    const diff = dueDate.getTime() - now.getTime();
-
-    if (diff < 0) {
-        return 'Overdue';
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-    if (days > 0) {
-        return `${days} day${days > 1 ? 's' : ''} remaining`;
-    } else if (hours > 0) {
-        return `${hours} hour${hours > 1 ? 's' : ''} remaining`;
-    } else {
-        return 'Due soon';
-    }
-}
-
-// Placeholder for edit task function
-function editTask(taskId) {
-    showNotification('Edit task functionality coming soon!', 'info');
+    alert(`Task Details:
+Title: ${task.title}
+Description: ${task.description || 'No description'}
+Priority: ${task.priority}
+Status: ${task.status}
+Deadline: ${formatDate(task.deadline)}
+Created: ${formatDate(task.createdAt)}`);
 }
 
 // Time block modal functions
@@ -1186,30 +950,27 @@ function formatDate(dateString) {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit',
-        hour12: true  // Add AM/PM format
+        minute: '2-digit'
     });
 }
 
-// Helper function to format time with proper AM/PM
-function formatTime(dateString) {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-}
+// Load user profile
+async function loadUserProfile() {
+    try {
+        const userData = await apiCall('/auth/profile', {
+            method: 'GET'
+        });
 
-// Helper function to format date with time
-function formatDateTime(dateString) {
-    return new Date(dateString).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
+        if (userData && userData.user) {
+            // Update user display elements
+            const userNameElements = document.querySelectorAll('.user-name');
+            userNameElements.forEach(element => {
+                element.textContent = userData.user.name || userData.user.email || 'User';
+            });
+        }
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+    }
 }
 
 // Notification system

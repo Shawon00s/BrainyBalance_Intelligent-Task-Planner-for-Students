@@ -60,20 +60,109 @@
             background: rgba(99, 102, 241, 0.2);
             color: #a5b4fc;
         }
+
+        /* Schedule grid improvements */
+        .schedule-entry,
+        .task-entry {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .schedule-entry:hover,
+        .task-entry:hover {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+            z-index: 10;
+        }
+
+        .schedule-entry.expanded,
+        .task-entry.expanded {
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+            z-index: 15;
+        }
+
+        .multiple-entries-indicator,
+        .cell-toggle {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            z-index: 20;
+        }
+
+        /* Ensure grid rows can expand */
+        .schedule-grid-row {
+            min-height: 64px;
+        }
+
+        /* Smooth height transitions */
+        [data-day] {
+            transition: min-height 0.3s ease;
+        }
+
+        .entries-container {
+            transition: max-height 0.3s ease, overflow 0.3s ease;
+        }
+
+        /* Line clamp utility for text truncation */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Collapsed state styling */
+        [data-day].collapsed .entries-container {
+            position: relative;
+        }
+
+        [data-day].collapsed .entries-container::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background: linear-gradient(transparent, rgba(30, 41, 59, 0.8));
+            pointer-events: none;
+        }
+
+        /* Entry expand button styling */
+        .expand-btn {
+            transition: all 0.2s ease;
+        }
+
+        .expand-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Cell toggle button styling */
+        .cell-toggle {
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(51, 65, 85, 0.3);
+        }
+
+        .cell-toggle:hover {
+            background: rgba(15, 23, 42, 0.9);
+            border-color: rgba(99, 102, 241, 0.4);
+        }
     </style>
 </head>
 
 <body class="font-inter bg-gradient-to-br from-dark-bg via-slate-900 to-dark-card text-gray-100 min-h-screen">
     <!-- Navigation -->
-    <nav class="glass-effect border-b border-dark-border">
+    <nav class="glass-effect sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 lg:px-6">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-8">
-                    <div
-                        class="flex items-center space-x-2 text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        <i
-                            class="fas fa-graduation-cap text-2xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"></i>
-                        <span>BrainyBalance</span>
+                    <div class="flex items-center">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <h1
+                            class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                            BrainyBalance
+                        </h1>
                     </div>
                     <div class="hidden md:flex space-x-6">
                         <a href="dashboard.html"
@@ -86,14 +175,35 @@
                             class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
                             class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                        <a href="ai-recommendations.html"
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fas fa-robot mr-1"></i>AI Recommendations
+                        </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span
-                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                    </button>
+                    <div class="relative">
+                        <button id="notificationButton"
+                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notificationBadge"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notificationDropdown"
+                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
+                            <div class="p-4 border-b border-dark-border">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold text-white">Notifications</h3>
+                                    <button id="markAllReadBtn"
+                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
+                                </div>
+                            </div>
+                            <div id="notificationDropdownList" class="p-2">
+                                <div class="text-center text-gray-400 py-4">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
@@ -111,10 +221,10 @@
                                 <i class="fas fa-cog mr-2"></i>Preferences
                             </a>
                             <hr class="border-dark-border">
-                            <a href="#" onclick="logout(); return false;"
-                                class="block px-4 py-2 text-red-400 hover:bg-gray-800 logout-btn">
+                            <button id="logoutBtn"
+                                class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -141,18 +251,6 @@
             <div>
                 <h1 class="text-3xl font-bold mb-2">Smart Schedule</h1>
                 <p class="text-gray-400">AI-powered scheduling for optimal productivity</p>
-            </div>
-            <div class="flex space-x-4 mt-4 md:mt-0">
-                <button id="generateScheduleBtn"
-                    class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center">
-                    <i class="fas fa-magic mr-2"></i>
-                    Generate Schedule
-                </button>
-                <button id="addTimeBlockBtn"
-                    class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-all flex items-center">
-                    <i class="fas fa-plus mr-2"></i>
-                    Add Time Block
-                </button>
             </div>
         </div>
 
@@ -221,128 +319,13 @@
             </div>
 
             <!-- Calendar Body -->
-            <div class="divide-y divide-dark-border max-h-96 overflow-y-auto">
-                <!-- Hours rows (8 AM - 6 PM) - empty cells will be populated by schedule.js -->
-                <!-- Each row: time label + 7 day cells -->
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">8:00 AM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">9:00 AM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">10:00 AM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">11:00 AM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">12:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">1:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">2:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">3:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">4:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">5:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                </div>
-
-                <div class="grid grid-cols-8 divide-x divide-dark-border min-h-16">
-                    <div class="p-3 text-sm text-gray-400 bg-dark-bg">6:00 PM</div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
-                    <div class="p-2"></div>
+            <div class="divide-y divide-dark-border overflow-y-auto" style="max-height: 600px;">
+                <!-- Schedule rows will be dynamically generated by JavaScript -->
+                <div class="flex items-center justify-center py-12">
+                    <div class="text-center text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-3xl mb-4"></i>
+                        <p class="text-lg">Loading your schedule...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -354,22 +337,10 @@
                     <i class="fas fa-clock text-blue-400 mr-2"></i>
                     Time Distribution
                 </h3>
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-300">Study Time</span>
-                        <span class="text-blue-400 font-medium">12 hours</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-300">Assignments</span>
-                        <span class="text-green-400 font-medium">8 hours</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-300">Projects</span>
-                        <span class="text-purple-400 font-medium">6 hours</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-300">Free Time</span>
-                        <span class="text-yellow-400 font-medium">10 hours</span>
+                <div id="timeDistribution" class="space-y-3">
+                    <div class="text-center text-gray-400 py-4">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Loading time distribution...</p>
                     </div>
                 </div>
             </div>
@@ -377,24 +348,12 @@
             <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <h3 class="font-semibold mb-4 flex items-center">
                     <i class="fas fa-calendar-check text-green-400 mr-2"></i>
-                    This Week's Goals
+                    This Week's Tasks
                 </h3>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-300">Complete Math Assignment</span>
-                        <i class="fas fa-check text-green-400"></i>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-300">Finish CS Project</span>
-                        <div class="w-16 bg-dark-bg rounded-full h-2">
-                            <div class="bg-blue-500 h-2 rounded-full" style="width: 75%"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-300">Study for Physics Exam</span>
-                        <div class="w-16 bg-dark-bg rounded-full h-2">
-                            <div class="bg-yellow-500 h-2 rounded-full" style="width: 40%"></div>
-                        </div>
+                <div id="weeklyTasks" class="space-y-3">
+                    <div class="text-center text-gray-400 py-4">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Loading tasks...</p>
                     </div>
                 </div>
             </div>
@@ -402,75 +361,14 @@
             <div class="glass-effect rounded-xl p-6 dashboard-card">
                 <h3 class="font-semibold mb-4 flex items-center">
                     <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
-                    AI Suggestions
+                    Schedule Insights
                 </h3>
-                <div class="space-y-3 text-sm">
-                    <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                        <p class="text-blue-400 font-medium mb-1">Optimal Study Time</p>
-                        <p class="text-gray-300">You're most focused at 10 AM. Schedule important tasks then.</p>
-                    </div>
-                    <div class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
-                        <p class="text-orange-400 font-medium mb-1">Break Reminder</p>
-                        <p class="text-gray-300">Add 15-min breaks between study sessions.</p>
+                <div id="scheduleInsights" class="space-y-3 text-sm">
+                    <div class="text-center text-gray-400 py-4">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p>Analyzing schedule...</p>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Time Block Modal -->
-    <div id="timeBlockModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
-        <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="glass-effect rounded-xl p-6 w-full max-w-md dashboard-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold">Add Available Time Block</h2>
-                    <button id="closeTimeBlockModal" class="text-gray-400 hover:text-white">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-                <form id="timeBlockForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Day of Week</label>
-                        <select name="day" required
-                            class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                            <option value="">Select Day</option>
-                            <option value="monday">Monday</option>
-                            <option value="tuesday">Tuesday</option>
-                            <option value="wednesday">Wednesday</option>
-                            <option value="thursday">Thursday</option>
-                            <option value="friday">Friday</option>
-                            <option value="saturday">Saturday</option>
-                            <option value="sunday">Sunday</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Start Time</label>
-                            <input type="time" name="startTime" required
-                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">End Time</label>
-                            <input type="time" name="endTime" required
-                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Label (Optional)</label>
-                        <input type="text" name="label" placeholder="e.g., Study Time, Work Block"
-                            class="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400">
-                    </div>
-                    <div class="flex space-x-4 pt-4">
-                        <button type="button" id="cancelTimeBlock"
-                            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-medium transition-all">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                            class="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-3 rounded-lg font-medium transition-all">
-                            Add Block
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

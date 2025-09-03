@@ -9,15 +9,6 @@ let analyticsData = null;
 
 // Initialize analytics dashboard
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('Analytics page loaded, initializing...');
-
-    // Check if Chart.js is available
-    if (typeof Chart === 'undefined') {
-        console.error('Chart.js is not loaded');
-        showErrorStates();
-        return;
-    }
-
     initializeAnalytics();
     setupEventListeners();
 });
@@ -52,10 +43,8 @@ function setupEventListeners() {
 // Initialize analytics
 async function initializeAnalytics() {
     try {
-        console.log('Starting analytics initialization...');
         showLoadingStates();
         await loadAnalyticsData(7); // Default to last 7 days
-        console.log('Analytics initialization completed');
     } catch (error) {
         console.error('Error initializing analytics:', error);
         showErrorStates();
@@ -67,8 +56,7 @@ async function loadAnalyticsData(period = 7) {
     try {
         const token = localStorage.getItem('token');
         if (!token) {
-            console.log('No token found, using demo data');
-            loadDemoData();
+            window.location.href = 'login.html';
             return;
         }
 
@@ -77,212 +65,50 @@ async function loadAnalyticsData(period = 7) {
             'Content-Type': 'application/json'
         };
 
-        // Try to fetch all analytics data
-        try {
-            const [
-                tasksResponse,
-                analyticsResponse,
-                timeUsageResponse,
-                focusSessionsResponse,
-                subjectsResponse
-            ] = await Promise.all([
-                fetch(`${API_BASE}/tasks?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/overview?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/time-usage?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/focus-sessions?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/subjects?period=${period}`, { headers }).catch(() => null)
-            ]);
+        // Fetch all analytics data
+        const [
+            tasksResponse,
+            analyticsResponse,
+            timeUsageResponse,
+            focusSessionsResponse,
+            subjectsResponse
+        ] = await Promise.all([
+            fetch(`${API_BASE}/tasks?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/overview?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/time-usage?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/focus-sessions?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/subjects?period=${period}`, { headers })
+        ]);
 
-            // If any critical response is null or not ok, use demo data
-            if (!tasksResponse || !analyticsResponse || !tasksResponse.ok || !analyticsResponse.ok) {
-                console.log('API not available, using demo data');
-                loadDemoData();
-                return;
-            }
-
-            const tasks = await tasksResponse.json();
-            const analytics = await analyticsResponse.json();
-            const timeUsage = timeUsageResponse ? await timeUsageResponse.json() : null;
-            const focusSessions = focusSessionsResponse ? await focusSessionsResponse.json() : null;
-            const subjects = subjectsResponse ? await subjectsResponse.json() : null;
-
-            // Store data
-            taskData = tasks;
-            analyticsData = {
-                overview: analytics,
-                timeUsage: timeUsage,
-                focusSessions: focusSessions,
-                subjects: subjects
-            };
-
-            // Update all visualizations
-            updateKeyMetrics();
-            createAllCharts();
-            updateActivityFeed();
-            generateInsights();
-
-        } catch (apiError) {
-            console.log('API error, falling back to demo data:', apiError);
-            loadDemoData();
+        if (!tasksResponse.ok || !analyticsResponse.ok) {
+            throw new Error('Failed to fetch analytics data');
         }
+
+        const tasks = await tasksResponse.json();
+        const analytics = await analyticsResponse.json();
+        const timeUsage = await timeUsageResponse.json();
+        const focusSessions = await focusSessionsResponse.json();
+        const subjects = await subjectsResponse.json();
+
+        // Store data
+        taskData = tasks;
+        analyticsData = {
+            overview: analytics,
+            timeUsage: timeUsage,
+            focusSessions: focusSessions,
+            subjects: subjects
+        };
+
+        // Update all visualizations
+        updateKeyMetrics();
+        createAllCharts();
+        updateActivityFeed();
+        generateInsights();
 
     } catch (error) {
         console.error('Error loading analytics data:', error);
-        loadDemoData();
+        showErrorStates();
     }
-}
-
-// Load demo data when API is not available
-function loadDemoData() {
-    console.log('Loading demo analytics data...');
-
-    // Demo task data
-    taskData = {
-        tasks: [
-            { id: 1, title: 'Math Assignment', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-05' },
-            { id: 2, title: 'Physics Exam Study', category: 'exam', priority: 'urgent', status: 'in-progress', dueDate: '2025-09-10' },
-            { id: 3, title: 'History Project', category: 'project', priority: 'medium', status: 'pending', dueDate: '2025-09-15' },
-            { id: 4, title: 'Chemistry Lab Report', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-03' },
-            { id: 5, title: 'English Essay', category: 'assignment', priority: 'medium', status: 'overdue', dueDate: '2025-08-30' },
-            { id: 6, title: 'Biology Exam', category: 'exam', priority: 'urgent', status: 'pending', dueDate: '2025-09-12' },
-            { id: 7, title: 'Programming Project', category: 'project', priority: 'high', status: 'in-progress', dueDate: '2025-09-20' },
-            { id: 8, title: 'Personal Reading', category: 'personal', priority: 'low', status: 'completed', dueDate: '2025-09-01' }
-        ]
-    };
-
-    // Demo analytics data
-    analyticsData = {
-        overview: {
-            totalStudyHours: 127.5,
-            studyHoursTrend: 12.5,
-            tasksCompleted: 89,
-            tasksTrend: 8.2,
-            averageGrade: 87.5,
-            gradeTrend: 5.1,
-            productivityScore: 92,
-            productivityTrend: 3.7,
-            dailyHours: [
-                { date: '2025-08-27', hours: 4.5 },
-                { date: '2025-08-28', hours: 3.2 },
-                { date: '2025-08-29', hours: 5.1 },
-                { date: '2025-08-30', hours: 2.8 },
-                { date: '2025-08-31', hours: 4.7 },
-                { date: '2025-09-01', hours: 6.2 },
-                { date: '2025-09-02', hours: 3.9 }
-            ],
-            weeklyProgress: [
-                { week: 1, completed: 12, total: 15 },
-                { week: 2, completed: 18, total: 20 },
-                { week: 3, completed: 22, total: 25 },
-                { week: 4, completed: 16, total: 18 }
-            ],
-            productivityTrend: [
-                { date: '2025-08-27', score: 85 },
-                { date: '2025-08-28', score: 78 },
-                { date: '2025-08-29', score: 92 },
-                { date: '2025-08-30', score: 67 },
-                { date: '2025-08-31', score: 88 },
-                { date: '2025-09-01', score: 95 },
-                { date: '2025-09-02', score: 91 }
-            ],
-            comparison: {
-                current: { tasks: 28, hours: 42.5, focus: 34, efficiency: 87 },
-                previous: { tasks: 25, hours: 38.2, focus: 29, efficiency: 82 }
-            }
-        },
-        timeUsage: {
-            studyTime: 25.4,
-            taskWork: 18.7,
-            breakTime: 5.2,
-            focusTime: 12.8
-        },
-        focusSessions: {
-            totalSessions: 45,
-            averageDuration: 28,
-            successRate: 85,
-            sessions: [
-                { date: '2025-08-27', duration: 25 },
-                { date: '2025-08-28', duration: 30 },
-                { date: '2025-08-29', duration: 35 },
-                { date: '2025-08-30', duration: 20 },
-                { date: '2025-08-31', duration: 28 },
-                { date: '2025-09-01', duration: 32 },
-                { date: '2025-09-02', duration: 26 }
-            ]
-        },
-        subjects: [
-            { name: 'Mathematics', averageScore: 92 },
-            { name: 'Physics', averageScore: 88 },
-            { name: 'Chemistry', averageScore: 85 },
-            { name: 'Biology', averageScore: 90 },
-            { name: 'English', averageScore: 87 },
-            { name: 'History', averageScore: 83 }
-        ]
-    };
-
-    // Update all visualizations with demo data
-    updateKeyMetrics();
-    createAllCharts();
-    loadDemoActivity();
-    loadDemoInsights();
-}
-
-// Load demo activity
-function loadDemoActivity() {
-    const activities = [
-        {
-            description: 'Completed Math Assignment',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            icon: 'check-circle',
-            color: 'green'
-        },
-        {
-            description: 'Started Physics Exam Study',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            icon: 'book',
-            color: 'blue'
-        },
-        {
-            description: 'Completed Focus Session (25 min)',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-            icon: 'brain',
-            color: 'purple'
-        },
-        {
-            description: 'Updated Chemistry Lab Report',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-            icon: 'flask',
-            color: 'yellow'
-        }
-    ];
-
-    displayRecentActivity(activities);
-}
-
-// Load demo insights
-function loadDemoInsights() {
-    const insights = [
-        {
-            title: 'Peak Performance Time',
-            description: 'You are most productive between 10:00 AM - 12:00 PM with 95% task completion rate.',
-            type: 'positive',
-            icon: 'clock'
-        },
-        {
-            title: 'Study Pattern Analysis',
-            description: 'Your focus sessions are 15% longer on weekdays. Consider scheduling important tasks during this time.',
-            type: 'info',
-            icon: 'chart-line'
-        },
-        {
-            title: 'Subject Balance',
-            description: 'Mathematics and Physics are taking 60% of your study time. Consider balancing with other subjects.',
-            type: 'warning',
-            icon: 'balance-scale'
-        }
-    ];
-
-    displayInsights(insights);
 }
 
 // Update key metrics
@@ -318,7 +144,6 @@ function updateKeyMetrics() {
 
 // Create all charts
 function createAllCharts() {
-    console.log('Creating all charts...');
     createDailyStudyChart();
     createWeeklyProgressChart();
     createTaskTypeChart();
@@ -329,21 +154,12 @@ function createAllCharts() {
     createProductivityChart();
     createFocusChart();
     createComparisonChart();
-    console.log('All charts creation completed');
 }
 
 // Daily Study Hours Chart
 function createDailyStudyChart() {
-    console.log('Creating daily study chart...');
     const ctx = document.getElementById('dailyStudyChart');
-    if (!ctx) {
-        console.log('Daily study chart canvas not found');
-        return;
-    }
-    if (!analyticsData?.overview?.dailyHours) {
-        console.log('No daily hours data available');
-        return;
-    }
+    if (!ctx || !analyticsData?.overview?.dailyHours) return;
 
     if (analyticsCharts.dailyStudyChart) {
         analyticsCharts.dailyStudyChart.destroy();

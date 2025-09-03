@@ -8,16 +8,7 @@ let taskData = null;
 let analyticsData = null;
 
 // Initialize analytics dashboard
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('Analytics page loaded, initializing...');
-
-    // Check if Chart.js is available
-    if (typeof Chart === 'undefined') {
-        console.error('Chart.js is not loaded');
-        showErrorStates();
-        return;
-    }
-
+document.addEventListener('DOMContentLoaded', function() {
     initializeAnalytics();
     setupEventListeners();
 });
@@ -25,23 +16,23 @@ document.addEventListener('DOMContentLoaded', function () {
 // Setup event listeners
 function setupEventListeners() {
     // Period selector change
-    document.getElementById('analyticsPeriodSelector')?.addEventListener('change', function () {
+    document.getElementById('analyticsPeriodSelector')?.addEventListener('change', function() {
         const period = this.value;
         loadAnalyticsData(period);
     });
 
     // Time usage period change
-    document.getElementById('timeUsagePeriod')?.addEventListener('change', function () {
+    document.getElementById('timeUsagePeriod')?.addEventListener('change', function() {
         updateTimeUsageChart();
     });
 
     // Productivity metric change
-    document.getElementById('productivityMetric')?.addEventListener('change', function () {
+    document.getElementById('productivityMetric')?.addEventListener('change', function() {
         updateProductivityChart();
     });
 
     // Comparison period change
-    document.getElementById('comparisonPeriod')?.addEventListener('change', function () {
+    document.getElementById('comparisonPeriod')?.addEventListener('change', function() {
         updateComparisonChart();
     });
 
@@ -52,10 +43,8 @@ function setupEventListeners() {
 // Initialize analytics
 async function initializeAnalytics() {
     try {
-        console.log('Starting analytics initialization...');
         showLoadingStates();
         await loadAnalyticsData(7); // Default to last 7 days
-        console.log('Analytics initialization completed');
     } catch (error) {
         console.error('Error initializing analytics:', error);
         showErrorStates();
@@ -67,8 +56,7 @@ async function loadAnalyticsData(period = 7) {
     try {
         const token = localStorage.getItem('token');
         if (!token) {
-            console.log('No token found, using demo data');
-            loadDemoData();
+            window.location.href = 'login.html';
             return;
         }
 
@@ -77,212 +65,50 @@ async function loadAnalyticsData(period = 7) {
             'Content-Type': 'application/json'
         };
 
-        // Try to fetch all analytics data
-        try {
-            const [
-                tasksResponse,
-                analyticsResponse,
-                timeUsageResponse,
-                focusSessionsResponse,
-                subjectsResponse
-            ] = await Promise.all([
-                fetch(`${API_BASE}/tasks?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/overview?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/time-usage?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/focus-sessions?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/subjects?period=${period}`, { headers }).catch(() => null)
-            ]);
+        // Fetch all analytics data
+        const [
+            tasksResponse,
+            analyticsResponse,
+            timeUsageResponse,
+            focusSessionsResponse,
+            subjectsResponse
+        ] = await Promise.all([
+            fetch(`${API_BASE}/tasks?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/overview?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/time-usage?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/focus-sessions?period=${period}`, { headers }),
+            fetch(`${API_BASE}/analytics/subjects?period=${period}`, { headers })
+        ]);
 
-            // If any critical response is null or not ok, use demo data
-            if (!tasksResponse || !analyticsResponse || !tasksResponse.ok || !analyticsResponse.ok) {
-                console.log('API not available, using demo data');
-                loadDemoData();
-                return;
-            }
-
-            const tasks = await tasksResponse.json();
-            const analytics = await analyticsResponse.json();
-            const timeUsage = timeUsageResponse ? await timeUsageResponse.json() : null;
-            const focusSessions = focusSessionsResponse ? await focusSessionsResponse.json() : null;
-            const subjects = subjectsResponse ? await subjectsResponse.json() : null;
-
-            // Store data
-            taskData = tasks;
-            analyticsData = {
-                overview: analytics,
-                timeUsage: timeUsage,
-                focusSessions: focusSessions,
-                subjects: subjects
-            };
-
-            // Update all visualizations
-            updateKeyMetrics();
-            createAllCharts();
-            updateActivityFeed();
-            generateInsights();
-
-        } catch (apiError) {
-            console.log('API error, falling back to demo data:', apiError);
-            loadDemoData();
+        if (!tasksResponse.ok || !analyticsResponse.ok) {
+            throw new Error('Failed to fetch analytics data');
         }
+
+        const tasks = await tasksResponse.json();
+        const analytics = await analyticsResponse.json();
+        const timeUsage = await timeUsageResponse.json();
+        const focusSessions = await focusSessionsResponse.json();
+        const subjects = await subjectsResponse.json();
+
+        // Store data
+        taskData = tasks;
+        analyticsData = {
+            overview: analytics,
+            timeUsage: timeUsage,
+            focusSessions: focusSessions,
+            subjects: subjects
+        };
+
+        // Update all visualizations
+        updateKeyMetrics();
+        createAllCharts();
+        updateActivityFeed();
+        generateInsights();
 
     } catch (error) {
         console.error('Error loading analytics data:', error);
-        loadDemoData();
+        showErrorStates();
     }
-}
-
-// Load demo data when API is not available
-function loadDemoData() {
-    console.log('Loading demo analytics data...');
-
-    // Demo task data
-    taskData = {
-        tasks: [
-            { id: 1, title: 'Math Assignment', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-05' },
-            { id: 2, title: 'Physics Exam Study', category: 'exam', priority: 'urgent', status: 'in-progress', dueDate: '2025-09-10' },
-            { id: 3, title: 'History Project', category: 'project', priority: 'medium', status: 'pending', dueDate: '2025-09-15' },
-            { id: 4, title: 'Chemistry Lab Report', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-03' },
-            { id: 5, title: 'English Essay', category: 'assignment', priority: 'medium', status: 'overdue', dueDate: '2025-08-30' },
-            { id: 6, title: 'Biology Exam', category: 'exam', priority: 'urgent', status: 'pending', dueDate: '2025-09-12' },
-            { id: 7, title: 'Programming Project', category: 'project', priority: 'high', status: 'in-progress', dueDate: '2025-09-20' },
-            { id: 8, title: 'Personal Reading', category: 'personal', priority: 'low', status: 'completed', dueDate: '2025-09-01' }
-        ]
-    };
-
-    // Demo analytics data
-    analyticsData = {
-        overview: {
-            totalStudyHours: 127.5,
-            studyHoursTrend: 12.5,
-            tasksCompleted: 89,
-            tasksTrend: 8.2,
-            averageGrade: 87.5,
-            gradeTrend: 5.1,
-            productivityScore: 92,
-            productivityTrend: 3.7,
-            dailyHours: [
-                { date: '2025-08-27', hours: 4.5 },
-                { date: '2025-08-28', hours: 3.2 },
-                { date: '2025-08-29', hours: 5.1 },
-                { date: '2025-08-30', hours: 2.8 },
-                { date: '2025-08-31', hours: 4.7 },
-                { date: '2025-09-01', hours: 6.2 },
-                { date: '2025-09-02', hours: 3.9 }
-            ],
-            weeklyProgress: [
-                { week: 1, completed: 12, total: 15 },
-                { week: 2, completed: 18, total: 20 },
-                { week: 3, completed: 22, total: 25 },
-                { week: 4, completed: 16, total: 18 }
-            ],
-            productivityTrend: [
-                { date: '2025-08-27', score: 85 },
-                { date: '2025-08-28', score: 78 },
-                { date: '2025-08-29', score: 92 },
-                { date: '2025-08-30', score: 67 },
-                { date: '2025-08-31', score: 88 },
-                { date: '2025-09-01', score: 95 },
-                { date: '2025-09-02', score: 91 }
-            ],
-            comparison: {
-                current: { tasks: 28, hours: 42.5, focus: 34, efficiency: 87 },
-                previous: { tasks: 25, hours: 38.2, focus: 29, efficiency: 82 }
-            }
-        },
-        timeUsage: {
-            studyTime: 25.4,
-            taskWork: 18.7,
-            breakTime: 5.2,
-            focusTime: 12.8
-        },
-        focusSessions: {
-            totalSessions: 45,
-            averageDuration: 28,
-            successRate: 85,
-            sessions: [
-                { date: '2025-08-27', duration: 25 },
-                { date: '2025-08-28', duration: 30 },
-                { date: '2025-08-29', duration: 35 },
-                { date: '2025-08-30', duration: 20 },
-                { date: '2025-08-31', duration: 28 },
-                { date: '2025-09-01', duration: 32 },
-                { date: '2025-09-02', duration: 26 }
-            ]
-        },
-        subjects: [
-            { name: 'Mathematics', averageScore: 92 },
-            { name: 'Physics', averageScore: 88 },
-            { name: 'Chemistry', averageScore: 85 },
-            { name: 'Biology', averageScore: 90 },
-            { name: 'English', averageScore: 87 },
-            { name: 'History', averageScore: 83 }
-        ]
-    };
-
-    // Update all visualizations with demo data
-    updateKeyMetrics();
-    createAllCharts();
-    loadDemoActivity();
-    loadDemoInsights();
-}
-
-// Load demo activity
-function loadDemoActivity() {
-    const activities = [
-        {
-            description: 'Completed Math Assignment',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            icon: 'check-circle',
-            color: 'green'
-        },
-        {
-            description: 'Started Physics Exam Study',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            icon: 'book',
-            color: 'blue'
-        },
-        {
-            description: 'Completed Focus Session (25 min)',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-            icon: 'brain',
-            color: 'purple'
-        },
-        {
-            description: 'Updated Chemistry Lab Report',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-            icon: 'flask',
-            color: 'yellow'
-        }
-    ];
-
-    displayRecentActivity(activities);
-}
-
-// Load demo insights
-function loadDemoInsights() {
-    const insights = [
-        {
-            title: 'Peak Performance Time',
-            description: 'You are most productive between 10:00 AM - 12:00 PM with 95% task completion rate.',
-            type: 'positive',
-            icon: 'clock'
-        },
-        {
-            title: 'Study Pattern Analysis',
-            description: 'Your focus sessions are 15% longer on weekdays. Consider scheduling important tasks during this time.',
-            type: 'info',
-            icon: 'chart-line'
-        },
-        {
-            title: 'Subject Balance',
-            description: 'Mathematics and Physics are taking 60% of your study time. Consider balancing with other subjects.',
-            type: 'warning',
-            icon: 'balance-scale'
-        }
-    ];
-
-    displayInsights(insights);
 }
 
 // Update key metrics
@@ -290,35 +116,34 @@ function updateKeyMetrics() {
     if (!analyticsData?.overview) return;
 
     const overview = analyticsData.overview;
-
+    
     // Total Study Hours
     document.getElementById('totalStudyHours').textContent = `${overview.totalStudyHours || 0}h`;
-    document.getElementById('studyHoursTrend').innerHTML =
+    document.getElementById('studyHoursTrend').innerHTML = 
         `<i class="fas fa-${overview.studyHoursTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
          ${Math.abs(overview.studyHoursTrend || 0)}% vs last period`;
 
     // Tasks Completed
     document.getElementById('tasksCompleted').textContent = overview.tasksCompleted || 0;
-    document.getElementById('tasksCompletedTrend').innerHTML =
+    document.getElementById('tasksCompletedTrend').innerHTML = 
         `<i class="fas fa-${overview.tasksTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
          ${Math.abs(overview.tasksTrend || 0)}% vs last period`;
 
     // Average Grade
     document.getElementById('averageGrade').textContent = `${overview.averageGrade || 0}%`;
-    document.getElementById('averageGradeTrend').innerHTML =
+    document.getElementById('averageGradeTrend').innerHTML = 
         `<i class="fas fa-${overview.gradeTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
          ${Math.abs(overview.gradeTrend || 0)}% vs last period`;
 
     // Productivity Score
     document.getElementById('productivityScore').textContent = overview.productivityScore || 0;
-    document.getElementById('productivityTrend').innerHTML =
+    document.getElementById('productivityTrend').innerHTML = 
         `<i class="fas fa-${overview.productivityTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
          ${Math.abs(overview.productivityTrend || 0)}% vs last period`;
 }
 
 // Create all charts
 function createAllCharts() {
-    console.log('Creating all charts...');
     createDailyStudyChart();
     createWeeklyProgressChart();
     createTaskTypeChart();
@@ -329,21 +154,12 @@ function createAllCharts() {
     createProductivityChart();
     createFocusChart();
     createComparisonChart();
-    console.log('All charts creation completed');
 }
 
 // Daily Study Hours Chart
 function createDailyStudyChart() {
-    console.log('Creating daily study chart...');
     const ctx = document.getElementById('dailyStudyChart');
-    if (!ctx) {
-        console.log('Daily study chart canvas not found');
-        return;
-    }
-    if (!analyticsData?.overview?.dailyHours) {
-        console.log('No daily hours data available');
-        return;
-    }
+    if (!ctx || !analyticsData?.overview?.dailyHours) return;
 
     if (analyticsCharts.dailyStudyChart) {
         analyticsCharts.dailyStudyChart.destroy();
@@ -574,12 +390,12 @@ function createStatusChart() {
     const now = new Date();
     taskData.tasks.forEach(task => {
         let status = (task.status || 'pending').toLowerCase();
-
+        
         // Check if task is overdue
         if (status !== 'completed' && task.dueDate && new Date(task.dueDate) < now) {
             status = 'overdue';
         }
-
+        
         if (statusCounts.hasOwnProperty(status)) {
             statusCounts[status]++;
         } else {
@@ -622,7 +438,7 @@ function createTimeUsageChart() {
     }
 
     const data = analyticsData.timeUsage;
-
+    
     analyticsCharts.timeUsageChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -704,7 +520,7 @@ function createSubjectChart() {
 
     // Find best subject
     if (subjects.length > 0) {
-        const bestSubject = subjects.reduce((prev, current) =>
+        const bestSubject = subjects.reduce((prev, current) => 
             (prev.averageScore > current.averageScore) ? prev : current
         );
         document.getElementById('bestSubject').textContent = bestSubject.name;
@@ -827,7 +643,7 @@ function createComparisonChart() {
     }
 
     const comparison = analyticsData.overview.comparison;
-
+    
     analyticsCharts.comparisonChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -1010,7 +826,7 @@ function formatTimeAgo(timestamp) {
     const now = new Date();
     const time = new Date(timestamp);
     const diffInMinutes = Math.floor((now - time) / 60000);
-
+    
     if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -1035,3 +851,493 @@ function updateComparisonChart() {
     // Update comparison chart based on selected period
     createComparisonChart();
 }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+// Fetch analytics data from backend
+async function fetchAnalyticsData(endpoint) {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+// Show loading state
+function showLoadingState() {
+    const loadingHtml = `
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                <p class="text-gray-400">Loading analytics data...</p>
+            </div>
+        </div>
+    `;
+
+    // Show loading in chart containers
+    const chartContainers = [
+        'taskStatusChart', 'weeklyProgressChart', 'taskCategoriesChart', 'priorityChart'
+    ];
+
+    chartContainers.forEach(containerId => {
+        const container = document.getElementById(containerId);
+        if (container && container.parentElement) {
+            container.parentElement.innerHTML = loadingHtml;
+        }
+    });
+}
+
+// Hide loading state
+function hideLoadingState() {
+    // Restore chart canvases
+    const chartConfigs = [
+        { id: 'taskStatusChart', html: '<canvas id="taskStatusChart" width="400" height="400"></canvas>' },
+        { id: 'weeklyProgressChart', html: '<canvas id="weeklyProgressChart" width="400" height="300"></canvas>' },
+        { id: 'taskCategoriesChart', html: '<canvas id="taskCategoriesChart" width="400" height="300"></canvas>' },
+        { id: 'priorityChart', html: '<canvas id="priorityChart" width="400" height="300"></canvas>' }
+    ];
+
+    chartConfigs.forEach(config => {
+        const container = document.querySelector(`#${config.id}`);
+        if (container && container.parentElement) {
+            container.parentElement.innerHTML = config.html;
+        }
+    });
+}
+
+// Show error state
+function showErrorState() {
+    const errorHtml = `
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <p class="text-red-400 mb-2">Error loading analytics data</p>
+                <button onclick="loadTaskData()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg">
+                    Retry
+                </button>
+            </div>
+        </div>
+    `;
+
+    const chartContainers = document.querySelectorAll('canvas');
+    chartContainers.forEach(canvas => {
+        if (canvas.parentElement) {
+            canvas.parentElement.innerHTML = errorHtml;
+        }
+    });
+}
+
+// Create Task Status Chart
+function createTaskStatusChart() {
+    const ctx = document.getElementById('taskStatusChart').getContext('2d');
+
+    analyticsCharts.taskStatus = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'In Progress', 'Pending', 'Overdue'],
+            datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(34, 197, 94, 0.8)',   // Green for completed
+                    'rgba(59, 130, 246, 0.8)',  // Blue for in-progress
+                    'rgba(234, 179, 8, 0.8)',   // Yellow for pending
+                    'rgba(239, 68, 68, 0.8)'    // Red for overdue
+                ],
+                borderColor: [
+                    'rgba(34, 197, 94, 1)',
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(234, 179, 8, 1)',
+                    'rgba(239, 68, 68, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    updateTaskStatusChart();
+}
+
+// Update Task Status Chart with real data
+function updateTaskStatusChart() {
+    if (!analyticsCharts.taskStatus || !taskData) return;
+
+    const tasks = taskData.tasks || [];
+    const today = new Date();
+
+    let completed = 0, inProgress = 0, pending = 0, overdue = 0;
+
+    tasks.forEach(task => {
+        const deadline = new Date(task.deadline);
+
+        switch (task.status) {
+            case 'completed':
+                completed++;
+                break;
+            case 'in-progress':
+                inProgress++;
+                break;
+            case 'pending':
+                if (deadline < today) {
+                    overdue++;
+                } else {
+                    pending++;
+                }
+                break;
+            default:
+                pending++;
+        }
+    });
+
+    const data = [completed, inProgress, pending, overdue];
+    analyticsCharts.taskStatus.data.datasets[0].data = data;
+    analyticsCharts.taskStatus.update();
+
+    // Update count displays
+    document.getElementById('completedCount').textContent = completed;
+    document.getElementById('inProgressCount').textContent = inProgress;
+    document.getElementById('pendingCount').textContent = pending;
+    document.getElementById('overdueCount').textContent = overdue;
+}
+
+// Create Weekly Progress Chart
+function createWeeklyProgressChart() {
+    const ctx = document.getElementById('weeklyProgressChart').getContext('2d');
+
+    analyticsCharts.weeklyProgress = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Tasks Completed',
+                data: [0, 0, 0, 0, 0, 0, 0],
+                borderColor: 'rgba(16, 185, 129, 1)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(148, 163, 184, 0.8)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(148, 163, 184, 0.8)'
+                    }
+                }
+            }
+        }
+    });
+
+    updateWeeklyProgressChart();
+}
+
+// Update Weekly Progress Chart
+function updateWeeklyProgressChart() {
+    if (!analyticsCharts.weeklyProgress || !taskData) return;
+
+    const tasks = taskData.tasks || [];
+    const weekData = [0, 0, 0, 0, 0, 0, 0]; // Mon-Sun
+
+    const today = new Date();
+    const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1);
+
+    tasks.filter(task => task.status === 'completed').forEach(task => {
+        const completedDate = new Date(task.updatedAt);
+        if (completedDate >= weekStart) {
+            const dayOfWeek = completedDate.getDay();
+            const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust for Mon-Sun
+            weekData[adjustedDay]++;
+        }
+    });
+
+    analyticsCharts.weeklyProgress.data.datasets[0].data = weekData;
+    analyticsCharts.weeklyProgress.update();
+
+    // Update statistics
+    const totalCompleted = weekData.reduce((a, b) => a + b, 0);
+    const avgDaily = (totalCompleted / 7).toFixed(1);
+    const completionRate = tasks.length > 0 ? Math.round((totalCompleted / tasks.length) * 100) : 0;
+    const bestDayIndex = weekData.indexOf(Math.max(...weekData));
+    const bestDay = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][bestDayIndex];
+
+    document.getElementById('weeklyCompletion').textContent = `${completionRate}%`;
+    document.getElementById('avgDailyTasks').textContent = avgDaily;
+    document.getElementById('mostProductiveDay').textContent = bestDay;
+}
+
+// Create Task Categories Chart
+function createTaskCategoriesChart() {
+    const ctx = document.getElementById('taskCategoriesChart').getContext('2d');
+
+    analyticsCharts.taskCategories = new Chart(ctx, {
+        type: 'polarArea',
+        data: {
+            labels: ['Assignment', 'Exam', 'Project', 'Personal'],
+            datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',  // Blue
+                    'rgba(239, 68, 68, 0.8)',   // Red
+                    'rgba(34, 197, 94, 0.8)',   // Green
+                    'rgba(234, 179, 8, 0.8)'    // Yellow
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    updateTaskCategoriesChart();
+}
+
+// Update Task Categories Chart
+function updateTaskCategoriesChart() {
+    if (!analyticsCharts.taskCategories || !taskData) return;
+
+    const tasks = taskData.tasks || [];
+    const categories = { assignment: 0, exam: 0, project: 0, personal: 0 };
+
+    tasks.forEach(task => {
+        const category = task.category || 'personal';
+        if (categories.hasOwnProperty(category)) {
+            categories[category]++;
+        }
+    });
+
+    const data = [categories.assignment, categories.exam, categories.project, categories.personal];
+    analyticsCharts.taskCategories.data.datasets[0].data = data;
+    analyticsCharts.taskCategories.update();
+
+    // Update count displays
+    document.getElementById('assignmentCount').textContent = categories.assignment;
+    document.getElementById('examCount').textContent = categories.exam;
+    document.getElementById('projectCount').textContent = categories.project;
+    document.getElementById('personalCount').textContent = categories.personal;
+}
+
+// Create Priority Chart
+function createPriorityChart() {
+    const ctx = document.getElementById('priorityChart').getContext('2d');
+
+    analyticsCharts.priority = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Urgent', 'High', 'Medium', 'Low'],
+            datasets: [{
+                label: 'Tasks',
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(239, 68, 68, 0.8)',   // Red for urgent
+                    'rgba(245, 158, 11, 0.8)',  // Orange for high
+                    'rgba(234, 179, 8, 0.8)',   // Yellow for medium
+                    'rgba(34, 197, 94, 0.8)'    // Green for low
+                ],
+                borderColor: [
+                    'rgba(239, 68, 68, 1)',
+                    'rgba(245, 158, 11, 1)',
+                    'rgba(234, 179, 8, 1)',
+                    'rgba(34, 197, 94, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(148, 163, 184, 0.8)'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)'
+                    },
+                    ticks: {
+                        color: 'rgba(148, 163, 184, 0.8)'
+                    }
+                }
+            }
+        }
+    });
+
+    updatePriorityChart();
+}
+
+// Update Priority Chart
+function updatePriorityChart() {
+    if (!analyticsCharts.priority || !taskData) return;
+
+    const tasks = taskData.tasks || [];
+    const priorities = { urgent: 0, high: 0, medium: 0, low: 0 };
+
+    tasks.forEach(task => {
+        const priority = task.priority || 'medium';
+        if (priorities.hasOwnProperty(priority)) {
+            priorities[priority]++;
+        }
+    });
+
+    const data = [priorities.urgent, priorities.high, priorities.medium, priorities.low];
+    analyticsCharts.priority.data.datasets[0].data = data;
+    analyticsCharts.priority.update();
+
+    // Update count displays
+    document.getElementById('urgentCount').textContent = priorities.urgent;
+    document.getElementById('highCount').textContent = priorities.high;
+    document.getElementById('mediumCount').textContent = priorities.medium;
+    document.getElementById('lowCount').textContent = priorities.low;
+}
+
+// Update Recent Activity
+function updateRecentActivity() {
+    if (!taskData) return;
+
+    const tasks = taskData.tasks || [];
+    const recentTasks = tasks
+        .filter(task => task.status === 'completed')
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        .slice(0, 5);
+
+    const activityContainer = document.getElementById('recentActivity');
+
+    if (recentTasks.length === 0) {
+        activityContainer.innerHTML = `
+            <div class="text-center text-gray-400 py-8">
+                <i class="fas fa-tasks text-3xl mb-2"></i>
+                <p>No recent activity found</p>
+                <p class="text-sm">Complete some tasks to see activity here</p>
+            </div>
+        `;
+        return;
+    }
+
+    activityContainer.innerHTML = recentTasks.map(task => {
+        const date = new Date(task.updatedAt);
+        const timeAgo = getTimeAgo(date);
+
+        return `
+            <div class="flex items-center space-x-3 p-3 bg-dark-surface rounded-lg">
+                <div class="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-check text-green-400 text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-white font-medium">${task.title}</p>
+                    <p class="text-gray-400 text-sm">${timeAgo}</p>
+                </div>
+                <div class="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
+                    ${task.category || 'Personal'}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Helper function to get time ago
+function getTimeAgo(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffMins > 0) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    return 'Just now';
+}
+
+// Setup period change handler
+function setupPeriodHandler() {
+    const taskPeriod = document.getElementById('taskPeriod');
+    if (taskPeriod) {
+        taskPeriod.addEventListener('change', (e) => {
+            loadTaskData(); // Reload data for new period
+        });
+    }
+}
+
+// Refresh analytics data
+async function refreshAnalytics() {
+    await loadTaskData();
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(() => {
+        initializeSimplifiedAnalytics();
+        setupPeriodHandler();
+    }, 1000);
+});

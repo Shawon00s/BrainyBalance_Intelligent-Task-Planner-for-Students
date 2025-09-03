@@ -116,15 +116,19 @@
 
 <body class="font-inter bg-gradient-to-br from-dark-bg via-slate-900 to-dark-card text-gray-100 min-h-screen">
     <!-- Navigation -->
-    <nav class="glass-effect border-b border-dark-border">
+    <nav class="glass-effect sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 lg:px-6">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-8">
-                    <div
-                        class="flex items-center space-x-2 text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-                        <i
-                            class="fas fa-graduation-cap text-2xl bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"></i>
-                        <span>BrainyBalance</span>
+                    <div class="flex items-center">
+                        <div
+                            class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-graduation-cap text-white text-lg"></i>
+                        </div>
+                        <h1
+                            class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                            BrainyBalance
+                        </h1>
                     </div>
                     <div class="hidden md:flex space-x-6">
                         <a href="dashboard.html"
@@ -137,18 +141,35 @@
                             class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
                             class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
-                        <a href="calendar.html"
+                        <a href="ai-recommendations.html"
                             class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">
-                            <i class="fab fa-google mr-1"></i>Calendar
+                            <i class="fas fa-robot mr-1"></i>AI Recommendations
                         </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span
-                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                    </button>
+                    <div class="relative">
+                        <button id="notificationButton"
+                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notificationBadge"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notificationDropdown"
+                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
+                            <div class="p-4 border-b border-dark-border">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold text-white">Notifications</h3>
+                                    <button id="markAllReadBtn"
+                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
+                                </div>
+                            </div>
+                            <div id="notificationDropdownList" class="p-2">
+                                <div class="text-center text-gray-400 py-4">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
@@ -166,10 +187,10 @@
                                 <i class="fas fa-cog mr-2"></i>Preferences
                             </a>
                             <hr class="border-dark-border">
-                            <a href="#" onclick="logout(); return false;"
-                                class="block px-4 py-2 text-red-400 hover:bg-gray-800 logout-btn">
+                            <button id="logoutBtn"
+                                class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -186,9 +207,6 @@
             <a href="schedule.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
             <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
             <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
-            <a href="calendar.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">
-                <i class="fab fa-google mr-1"></i>Calendar
-            </a>
         </div>
     </div>
 
@@ -514,6 +532,93 @@
         </div>
     </div>
 
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="glass-effect rounded-xl p-8 w-full max-w-3xl dashboard-card">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold">Edit Task</h2>
+                    <button id="closeEditModal" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="editTaskForm" class="space-y-4">
+                    <input type="hidden" id="editTaskId" name="taskId">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Task Title</label>
+                        <input type="text" id="editTaskTitle" name="title" required
+                            class="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
+                            placeholder="Enter task title...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                        <textarea id="editTaskDescription" name="description" rows="3"
+                            class="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-400"
+                            placeholder="Task description..."></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Priority</label>
+                            <select id="editTaskPriority" name="priority" required
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="">Select Priority</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Category</label>
+                            <select id="editTaskCategory" name="category" required
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                <option value="">Select Category</option>
+                                <option value="assignment">Assignment</option>
+                                <option value="exam">Exam</option>
+                                <option value="project">Project</option>
+                                <option value="study">Study</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Due Date & Time</label>
+                        <div class="relative">
+                            <input type="text" id="editDueDatePicker" name="dueDate" required
+                                placeholder="Select date and time..."
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 pr-10 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer">
+                            <i
+                                class="fas fa-calendar-alt absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Estimated Time (minutes)</label>
+                            <input type="number" id="editTaskEstimatedTime" name="estimatedTime" min="15" max="480"
+                                step="15" value="60"
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="60">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tags (optional)</label>
+                            <input type="text" id="editTaskTags" name="tags"
+                                class="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="homework, research, review">
+                        </div>
+                    </div>
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="cancelEditTask"
+                            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-medium transition-all">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white py-3 rounded-lg font-medium transition-all">
+                            Update Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="js/auth.js"></script>
     <script src="js/googleCalendar.js"></script>
     <script src="js/tasks.js"></script>
@@ -528,15 +633,16 @@
         });
 
         function initializeDatePicker() {
+            // Initialize Add Task Date Picker
             const datePickerElement = document.getElementById('dueDatePicker');
             if (datePickerElement) {
                 flatpickr(datePickerElement, {
                     enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    time_24hr: true,
+                    dateFormat: "Y-m-d h:i K",  // Changed to 12-hour format with AM/PM
+                    time_24hr: false,           // Changed to false for AM/PM format
                     minDate: "today",
                     theme: "dark",
-                    disableMobile: true, // Force desktop view for better UX
+                    disableMobile: true,
                     inline: false,
                     clickOpens: true,
                     allowInput: true,
@@ -548,7 +654,7 @@
                     position: "below",
                     animate: true,
                     locale: {
-                        firstDayOfWeek: 1, // Monday
+                        firstDayOfWeek: 1,
                         weekdays: {
                             shorthand: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
                             longhand: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -559,7 +665,6 @@
                         }
                     },
                     onReady: function (selectedDates, dateStr, instance) {
-                        // Custom styling for dark theme
                         const calendarContainer = instance.calendarContainer;
                         calendarContainer.style.fontFamily = 'Inter, sans-serif';
                         calendarContainer.style.borderRadius = '12px';
@@ -568,7 +673,52 @@
                     },
                     onChange: function (selectedDates, dateStr, instance) {
                         if (selectedDates.length > 0) {
-                            // Update the input value
+                            instance.input.value = dateStr;
+                        }
+                    }
+                });
+            }
+
+            // Initialize Edit Task Date Picker
+            const editDatePickerElement = document.getElementById('editDueDatePicker');
+            if (editDatePickerElement) {
+                window.editDatePicker = flatpickr(editDatePickerElement, {
+                    enableTime: true,
+                    dateFormat: "Y-m-d h:i K",  // Changed to 12-hour format with AM/PM
+                    time_24hr: false,           // Changed to false for AM/PM format
+                    minDate: "today",
+                    theme: "dark",
+                    disableMobile: true,
+                    inline: false,
+                    clickOpens: true,
+                    allowInput: true,
+                    monthSelectorType: "dropdown",
+                    yearSelectorType: "dropdown",
+                    defaultHour: 9,
+                    defaultMinute: 0,
+                    minuteIncrement: 15,
+                    position: "below",
+                    animate: true,
+                    locale: {
+                        firstDayOfWeek: 1,
+                        weekdays: {
+                            shorthand: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                            longhand: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                        },
+                        months: {
+                            shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                            longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                        }
+                    },
+                    onReady: function (selectedDates, dateStr, instance) {
+                        const calendarContainer = instance.calendarContainer;
+                        calendarContainer.style.fontFamily = 'Inter, sans-serif';
+                        calendarContainer.style.borderRadius = '12px';
+                        calendarContainer.style.border = '1px solid #2d2d30';
+                        calendarContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2)';
+                    },
+                    onChange: function (selectedDates, dateStr, instance) {
+                        if (selectedDates.length > 0) {
                             instance.input.value = dateStr;
                         }
                     }

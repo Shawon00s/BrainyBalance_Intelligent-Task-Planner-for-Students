@@ -91,30 +91,34 @@
 <body class="bg-dark-bg text-white min-h-screen">
     <!-- Navigation -->
     <nav class="glass-effect sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto px-4 lg:px-6">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-8">
                     <div class="flex items-center">
                         <div
-                            class="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-brain text-white text-lg"></i>
+                            class="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-graduation-cap text-white text-lg"></i>
                         </div>
                         <h1
-                            class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                            class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                             BrainyBalance
                         </h1>
                     </div>
                     <div class="hidden md:flex space-x-6">
                         <a href="dashboard.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Dashboard</a>
-                        <a href="tasks.html" class="text-gray-300 hover:text-indigo-400 transition-colors">Tasks</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Dashboard</a>
+                        <a href="tasks.html"
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Tasks</a>
                         <a href="schedule.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Schedule</a>
                         <a href="analytics.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Analytics</a>
                         <a href="pomodoro.html"
-                            class="text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
-                        <a href="ai-recommendations.html" class="text-indigo-400 font-medium">AI Recommendations</a>
+                            class="nav-link px-3 py-2 rounded-lg text-gray-300 hover:text-indigo-400 transition-colors">Pomodoro</a>
+                        <a href="ai-recommendations.html"
+                            class="nav-link px-3 py-2 rounded-lg text-indigo-400 bg-indigo-500/20 border border-indigo-500/30">
+                            <i class="fas fa-robot mr-1"></i>AI Recommendations
+                        </a>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -122,30 +126,70 @@
                         class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all">
                         <i class="fas fa-magic mr-2"></i>Generate AI Recommendations
                     </button>
-                    <button class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span
-                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                    </button>
+                    <div class="relative">
+                        <button id="notificationButton"
+                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="notificationBadge"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notificationDropdown"
+                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
+                            <div class="p-4 border-b border-dark-border">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="font-semibold text-white">Notifications</h3>
+                                    <button id="markAllReadBtn"
+                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
+                                </div>
+                            </div>
+                            <div id="notificationDropdownList" class="p-2">
+                                <div class="text-center text-gray-400 py-4">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
-                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=AI" alt="Profile"
-                                class="w-8 h-8 rounded-full">
+                            <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
+                                class="w-8 h-8 rounded-full profile-image">
+                            <span class="hidden md:block user-name">User</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
-                        <div class="absolute right-0 mt-2 w-48 glass-effect rounded-lg py-2 hidden group-hover:block">
-                            <a href="#"
-                                class="block px-4 py-2 text-gray-300 hover:text-white hover:bg-white/10">Profile</a>
-                            <a href="#"
-                                class="block px-4 py-2 text-gray-300 hover:text-white hover:bg-white/10">Settings</a>
-                            <a href="index.html"
-                                class="block px-4 py-2 text-gray-300 hover:text-white hover:bg-white/10">Logout</a>
+                        <div
+                            class="absolute right-0 top-full mt-2 w-48 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                            <a href="profile.html"
+                                class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                                <i class="fas fa-user mr-2"></i>Profile Settings
+                            </a>
+                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                                <i class="fas fa-cog mr-2"></i>Preferences
+                            </a>
+                            <hr class="border-dark-border">
+                            <button id="logoutBtn"
+                                class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Mobile Navigation -->
+    <div class="md:hidden bg-dark-card border-b border-dark-border">
+        <div class="flex space-x-1 px-4 py-2 overflow-x-auto">
+            <a href="dashboard.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Dashboard</a>
+            <a href="tasks.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Tasks</a>
+            <a href="schedule.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
+            <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
+            <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
+            <a href="ai-recommendations.html"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">
+                <i class="fas fa-robot mr-1"></i>AI Recommendations
+            </a>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8">

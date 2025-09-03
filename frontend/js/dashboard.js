@@ -161,8 +161,8 @@ async function loadDashboardData() {
 
                 // Filter tasks for TODAY ONLY (strict date matching)
                 dashboardData.todayTasks = dashboardData.allTasks.filter(task => {
-                    if (task.dueDate) {
-                        const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+                    if (task.deadline) {
+                        const taskDate = new Date(task.deadline).toISOString().split('T')[0];
                         return taskDate === todayStr;
                     }
                     return false;
@@ -170,8 +170,8 @@ async function loadDashboardData() {
 
                 // Filter overdue tasks (past due dates)
                 dashboardData.overdueTasks = dashboardData.allTasks.filter(task => {
-                    if (task.dueDate && task.status !== 'completed') {
-                        const taskDate = new Date(task.dueDate).toISOString().split('T')[0];
+                    if (task.deadline && task.status !== 'completed') {
+                        const taskDate = new Date(task.deadline).toISOString().split('T')[0];
                         return taskDate < todayStr;
                     }
                     return false;
@@ -183,12 +183,12 @@ async function loadDashboardData() {
                 nextWeek.setHours(23, 59, 59, 999); // Include the entire last day
 
                 dashboardData.upcomingTasks = dashboardData.allTasks.filter(task => {
-                    if (task.dueDate && task.status !== 'completed') {
+                    if (task.deadline && task.status !== 'completed') {
                         // Handle multiple date formats
                         let taskDate;
-                        if (task.dueDate.includes('/')) {
+                        if (task.deadline.includes('/')) {
                             // Handle formats like "4/9/2025" or "9/4/2025"
-                            const parts = task.dueDate.split('/');
+                            const parts = task.deadline.split('/');
                             if (parts.length === 3) {
                                 // Assume MM/DD/YYYY format first
                                 const month = parseInt(parts[0]) - 1; // Month is 0-indexed
@@ -204,7 +204,7 @@ async function loadDashboardData() {
                                 }
                             }
                         } else {
-                            taskDate = new Date(task.dueDate);
+                            taskDate = new Date(task.deadline);
                         }
 
                         const taskDateStr = taskDate.toISOString().split('T')[0];
@@ -216,7 +216,7 @@ async function loadDashboardData() {
                         const isUpcoming = isAfterToday && isWithinWeek;
 
                         console.log(`Task: ${task.title}`);
-                        console.log(`  Original Due Date: ${task.dueDate}`);
+                        console.log(`  Original Due Date: ${task.deadline}`);
                         console.log(`  Parsed Date Object: ${taskDate}`);
                         console.log(`  Task Date String: ${taskDateStr}`);
                         console.log(`  Today String: ${todayStr}`);
@@ -241,7 +241,7 @@ async function loadDashboardData() {
                 dashboardData.pastTasks = dashboardData.allTasks.filter(task => {
                     if (task.status === 'completed') {
                         // If has completion date, use that; otherwise use due date
-                        const completedDate = task.completedAt || task.updatedAt || task.dueDate;
+                        const completedDate = task.completedAt || task.updatedAt || task.deadline;
                         if (completedDate) {
                             const taskDate = new Date(completedDate);
                             return taskDate >= thirtyDaysAgo && taskDate <= today;
@@ -250,8 +250,8 @@ async function loadDashboardData() {
                     return false;
                 }).sort((a, b) => {
                     // Sort by completion date (most recent first)
-                    const dateA = new Date(a.completedAt || a.updatedAt || a.dueDate);
-                    const dateB = new Date(b.completedAt || b.updatedAt || b.dueDate);
+                    const dateA = new Date(a.completedAt || a.updatedAt || a.deadline);
+                    const dateB = new Date(b.completedAt || b.updatedAt || b.deadline);
                     return dateB - dateA;
                 });
 
@@ -518,30 +518,45 @@ function updateDashboardUI() {
 async function loadNotifications() {
     try {
         console.log('Loading notifications...');
-        const response = await fetch(`${API_BASE}/notifications/unread`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
+
+        // Get unread count for navbar badge
+        const unreadResponse = await apiCall('/notifications/unread/count', {
+            method: 'GET'
         });
 
-        if (response.ok) {
-            notifications = await response.json();
+        // Get recent notifications for display
+        const notificationsResponse = await apiCall('/notifications?limit=10', {
+            method: 'GET'
+        });
+
+        if (notificationsResponse && notificationsResponse.notifications) {
+            notifications = notificationsResponse.notifications;
+
+            // Update navbar badge
+            if (unreadResponse && unreadResponse.unreadCount !== undefined) {
+                updateNotificationBadge(unreadResponse.unreadCount);
+            }
+
             updateNotifications();
+            console.log('Loaded', notifications.length, 'notifications');
         } else {
-            // Use fallback notifications
-            notifications = [
-                { id: 1, message: "Welcome to BrainyBalance!", type: "info", createdAt: new Date().toISOString() }
-            ];
-            updateNotifications();
+            throw new Error('Invalid response format');
         }
     } catch (error) {
-        console.log('Notifications endpoint not available, using default data');
+        console.log('Notifications endpoint not available, using default data:', error);
         // Use fallback notifications
         notifications = [
-            { id: 1, message: "Welcome to BrainyBalance!", type: "info", createdAt: new Date().toISOString() }
+            {
+                id: 1,
+                title: "Welcome to BrainyBalance!",
+                message: "Start organizing your tasks and boost your productivity.",
+                type: "system",
+                createdAt: new Date().toISOString(),
+                readAt: null
+            }
         ];
         updateNotifications();
+        updateNotificationBadge(1);
     }
 }
 
@@ -675,10 +690,10 @@ function updateTodayTasks() {
                             </div>
                         </div>
                         <div class="flex items-center space-x-2 ml-4">
-                            ${task.dueDate ? `
+                            ${task.deadline ? `
                                 <div class="text-right">
                                     <p class="text-xs text-gray-400">Due</p>
-                                    <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                                    <p class="text-xs text-white">${formatTaskDate(task.deadline)}</p>
                                 </div>
                             ` : ''}
                             <button onclick="toggleTaskFromDashboard('${task._id || task.id}')" 
@@ -720,7 +735,7 @@ function updateOverdueTasks() {
         section.classList.remove('hidden');
 
         container.innerHTML = dashboardData.overdueTasks.map(task => {
-            const daysOverdue = Math.floor((new Date() - new Date(task.dueDate)) / (1000 * 60 * 60 * 24));
+            const daysOverdue = Math.floor((new Date() - new Date(task.deadline)) / (1000 * 60 * 60 * 24));
             return `
                 <div class="task-item bg-red-900/20 p-4 rounded-lg border border-red-500/30 hover:border-red-400 transition-colors" data-task-id="${task.id || task._id}">
                     <div class="task-content">
@@ -741,7 +756,7 @@ function updateOverdueTasks() {
                             <div class="flex items-center space-x-2 ml-4">
                                 <div class="text-right">
                                     <p class="text-xs text-red-400">Was due</p>
-                                    <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                                    <p class="text-xs text-white">${formatTaskDate(task.deadline)}</p>
                                 </div>
                                 <button onclick="toggleTaskFromDashboard('${task._id || task.id}')" 
                                         class="text-gray-400 hover:text-green-400 transition-colors">
@@ -785,7 +800,7 @@ function updateUpcomingTasks() {
         .slice(0, 5);
 
     container.innerHTML = upcoming.map(task => {
-        const daysUntil = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+        const daysUntil = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
         return `
             <div class="task-item upcoming bg-dark-surface p-3 rounded-lg border border-dark-border hover:border-indigo-500/50 transition-colors" data-task-id="${task._id}">
                 <div class="task-content">
@@ -803,7 +818,7 @@ function updateUpcomingTasks() {
                         </div>
                         <div class="text-right">
                             <p class="text-xs text-gray-400">Due</p>
-                            <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                            <p class="text-xs text-white">${formatTaskDate(task.deadline)}</p>
                         </div>
                     </div>
                 </div>
@@ -844,10 +859,10 @@ function updateUpcomingTasksMain() {
 
         // Show all upcoming tasks (not limited to 5)
         const upcoming = dashboardData.upcomingTasks
-            .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
         container.innerHTML = upcoming.map(task => {
-            const daysUntil = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+            const daysUntil = Math.ceil((new Date(task.deadline) - new Date()) / (1000 * 60 * 60 * 24));
             return `
                 <div class="task-item bg-dark-surface p-4 rounded-lg border border-dark-border hover:border-blue-500/50 transition-colors" data-task-id="${task._id}">
                     <div class="task-content">
@@ -871,7 +886,7 @@ function updateUpcomingTasksMain() {
                             <div class="flex items-center space-x-2 ml-4">
                                 <div class="text-right">
                                     <p class="text-xs text-gray-400">Due</p>
-                                    <p class="text-xs text-white">${formatTaskDate(task.dueDate)}</p>
+                                    <p class="text-xs text-white">${formatTaskDate(task.deadline)}</p>
                                 </div>
                                 <button onclick="toggleTaskFromDashboard('${task._id || task.id}')" 
                                         class="text-gray-400 hover:text-green-400 transition-colors">
@@ -914,7 +929,7 @@ function updatePastTasks() {
         const recentPast = dashboardData.pastTasks.slice(0, 10);
 
         container.innerHTML = recentPast.map(task => {
-            const completedDate = new Date(task.completedAt || task.updatedAt || task.dueDate);
+            const completedDate = new Date(task.completedAt || task.updatedAt || task.deadline);
             const daysAgo = Math.floor((new Date() - completedDate) / (1000 * 60 * 60 * 24));
 
             return `
@@ -964,25 +979,124 @@ function updateNotifications() {
         }
 
         if (!notifications || notifications.length === 0) {
-            container.innerHTML = '<p class="text-gray-400 text-center py-4">No new notifications</p>';
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-6">
+                    <i class="fas fa-bell-slash text-3xl mb-2 opacity-50"></i>
+                    <p>No notifications yet</p>
+                    <p class="text-sm">You'll see deadline reminders and task updates here</p>
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = notifications.slice(0, 5).map(notification => `
-            <div class="notification-item bg-gray-700 p-3 rounded mb-2" data-notification-id="${notification.id || notification._id}">
-                <div class="notification-content">
-                    ${notification.title ? `<h5 class="font-semibold">${escapeHtml(notification.title)}</h5>` : ''}
-                    <p class="text-sm">${escapeHtml(notification.message)}</p>
-                    <small class="text-gray-400">${formatDateTime(notification.createdAt)}</small>
+        container.innerHTML = notifications.slice(0, 10).map(notification => {
+            const isUnread = !notification.readAt;
+            const typeIcon = getNotificationIcon(notification.type);
+            const typeColor = getNotificationColor(notification.type);
+
+            return `
+                <div class="notification-item ${isUnread ? 'bg-dark-surface border-l-4 border-indigo-500' : 'bg-gray-700/50'} p-4 rounded-lg mb-3 transition-all hover:bg-dark-surface cursor-pointer" 
+                     data-notification-id="${notification._id || notification.id}"
+                     onclick="markNotificationAsRead('${notification._id || notification.id}')">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <i class="${typeIcon} ${typeColor} text-lg"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                ${notification.title ? `<h5 class="font-semibold text-white text-sm truncate">${escapeHtml(notification.title)}</h5>` : ''}
+                                ${isUnread ? '<span class="bg-indigo-500 w-2 h-2 rounded-full flex-shrink-0"></span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-300 leading-relaxed">${escapeHtml(notification.message)}</p>
+                            <div class="flex items-center justify-between mt-2">
+                                <small class="text-gray-500">${formatDateTime(notification.createdAt)}</small>
+                                ${notification.priority === 'high' ? '<span class="text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded-full">High Priority</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (error) {
         console.error('Error updating notifications:', error);
         const container = document.getElementById('notificationsList');
         if (container) {
             container.innerHTML = '<p class="text-red-400 text-center py-4">Error loading notifications</p>';
         }
+    }
+}
+
+// Update notification badge in navbar
+function updateNotificationBadge(unreadCount) {
+    const badge = document.getElementById('notificationBadge');
+    if (badge) {
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// Get notification icon based on type
+function getNotificationIcon(type) {
+    switch (type) {
+        case 'deadline_warning':
+            return 'fas fa-clock';
+        case 'task_reminder':
+            return 'fas fa-tasks';
+        case 'task_completed':
+            return 'fas fa-check-circle';
+        case 'schedule_reminder':
+            return 'fas fa-calendar';
+        case 'system':
+            return 'fas fa-info-circle';
+        default:
+            return 'fas fa-bell';
+    }
+}
+
+// Get notification color based on type
+function getNotificationColor(type) {
+    switch (type) {
+        case 'deadline_warning':
+            return 'text-red-400';
+        case 'task_reminder':
+            return 'text-blue-400';
+        case 'task_completed':
+            return 'text-green-400';
+        case 'schedule_reminder':
+            return 'text-purple-400';
+        case 'system':
+            return 'text-gray-400';
+        default:
+            return 'text-indigo-400';
+    }
+}
+
+// Mark notification as read
+async function markNotificationAsRead(notificationId) {
+    try {
+        await apiCall(`/notifications/${notificationId}/read`, {
+            method: 'PUT'
+        });
+
+        // Update local notification state
+        const notification = notifications.find(n => (n._id || n.id) === notificationId);
+        if (notification) {
+            notification.readAt = new Date().toISOString();
+        }
+
+        // Refresh notifications display
+        updateNotifications();
+
+        // Update badge count
+        const unreadCount = notifications.filter(n => !n.readAt).length;
+        updateNotificationBadge(unreadCount);
+
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
     }
 }
 
@@ -1111,6 +1225,34 @@ function setupEventListeners() {
             window.location.href = 'login.html';
         });
     }
+
+    // Notification dropdown toggle
+    const notificationButton = document.getElementById('notificationButton');
+    const notificationDropdown = document.getElementById('notificationDropdown');
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+    if (notificationButton && notificationDropdown) {
+        notificationButton.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleNotificationDropdown();
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            if (!notificationDropdown.contains(e.target) && !notificationButton.contains(e.target)) {
+                closeNotificationDropdown();
+            }
+        });
+    }
+
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    }
+
+    // Refresh notifications every 30 seconds
+    setInterval(() => {
+        loadNotifications();
+    }, 30000);
 }
 
 // Utility functions
@@ -1405,9 +1547,106 @@ function showMessage(message, type) {
     }, 3000);
 }
 
+// Notification dropdown functions
+function toggleNotificationDropdown() {
+    const dropdown = document.getElementById('notificationDropdown');
+    const dropdownList = document.getElementById('notificationDropdownList');
+
+    if (dropdown.classList.contains('opacity-0')) {
+        // Show dropdown
+        dropdown.classList.remove('opacity-0', 'invisible');
+        dropdown.classList.add('opacity-100', 'visible');
+
+        // Load notifications in dropdown
+        updateNotificationDropdown();
+    } else {
+        // Hide dropdown
+        closeNotificationDropdown();
+    }
+}
+
+function closeNotificationDropdown() {
+    const dropdown = document.getElementById('notificationDropdown');
+    dropdown.classList.remove('opacity-100', 'visible');
+    dropdown.classList.add('opacity-0', 'invisible');
+}
+
+function updateNotificationDropdown() {
+    const dropdownList = document.getElementById('notificationDropdownList');
+    if (!dropdownList) return;
+
+    if (!notifications || notifications.length === 0) {
+        dropdownList.innerHTML = `
+            <div class="text-center text-gray-400 py-4">
+                <i class="fas fa-bell-slash text-2xl mb-2 opacity-50"></i>
+                <p class="text-sm">No notifications</p>
+            </div>
+        `;
+        return;
+    }
+
+    dropdownList.innerHTML = notifications.slice(0, 5).map(notification => {
+        const isUnread = !notification.readAt;
+        const typeIcon = getNotificationIcon(notification.type);
+        const typeColor = getNotificationColor(notification.type);
+
+        return `
+            <div class="notification-item ${isUnread ? 'bg-indigo-500/10 border-l-2 border-indigo-500' : 'bg-gray-700/30'} p-3 rounded-lg mb-2 cursor-pointer hover:bg-gray-600/30 transition-colors" 
+                 onclick="markNotificationAsRead('${notification._id || notification.id}')">
+                <div class="flex items-start space-x-2">
+                    <i class="${typeIcon} ${typeColor} text-sm mt-1"></i>
+                    <div class="flex-1 min-w-0">
+                        ${notification.title ? `<h6 class="font-medium text-white text-xs mb-1">${escapeHtml(notification.title)}</h6>` : ''}
+                        <p class="text-xs text-gray-300 leading-tight">${escapeHtml(notification.message)}</p>
+                        <span class="text-xs text-gray-500 mt-1 block">${formatDateTime(notification.createdAt)}</span>
+                    </div>
+                    ${isUnread ? '<span class="bg-indigo-500 w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2"></span>' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Add "View all" link if there are more notifications
+    if (notifications.length > 5) {
+        dropdownList.innerHTML += `
+            <div class="border-t border-gray-600 mt-2 pt-2">
+                <button class="w-full text-center text-indigo-400 hover:text-indigo-300 text-xs py-2">
+                    View all ${notifications.length} notifications
+                </button>
+            </div>
+        `;
+    }
+}
+
+async function markAllNotificationsAsRead() {
+    try {
+        await apiCall('/notifications/read-all', {
+            method: 'PUT'
+        });
+
+        // Update local notifications
+        notifications.forEach(n => {
+            if (!n.readAt) {
+                n.readAt = new Date().toISOString();
+            }
+        });
+
+        // Refresh displays
+        updateNotifications();
+        updateNotificationDropdown();
+        updateNotificationBadge(0);
+
+        showMessage('All notifications marked as read', 'success');
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+        showMessage('Failed to mark notifications as read', 'error');
+    }
+}
+
 // Global functions for onclick handlers
 window.toggleTaskStatus = toggleTaskStatus;
 window.markNotificationRead = markNotificationRead;
+window.markNotificationAsRead = markNotificationAsRead;
 window.applyRecommendation = applyRecommendation;
 window.dismissRecommendation = dismissRecommendation;
 window.generateNewRecommendations = generateNewRecommendations;

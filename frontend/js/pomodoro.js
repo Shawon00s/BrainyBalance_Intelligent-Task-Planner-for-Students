@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function () {
     loadSettings();
     loadTodayStats();
     loadSessionHistory();
+
+    // Check authentication before loading tasks
+    if (isAuthenticated()) {
+        loadUserTasks(); // Load tasks from database
+    } else {
+        console.log('User not authenticated, redirecting to login');
+        window.location.href = 'login.html';
+    }
 });
 
 // Timer state
@@ -23,7 +31,10 @@ let timerState = {
     currentSession: 'focus', // 'focus', 'shortBreak', 'longBreak'
     timeRemaining: 25 * 60, // 25 minutes in seconds
     sessionCount: 0,
-    currentTask: 'Mathematics Assignment - Calculus Problems'
+    currentTask: null, // Will be loaded from database
+    currentTaskId: null, // Task ID for database operations
+    activePomodoroSession: null, // Current pomodoro session ID
+    userTasks: [] // Array of user tasks from database
 };
 
 // Timer settings
@@ -60,7 +71,14 @@ function initializePomodoroTimer() {
 
     updateTimerDisplay();
     updateSessionButtons();
+
+    // Load user tasks from database
+    loadUserTasks();
+
+    // Check for active Pomodoro session
+    checkActiveSession();
 }
+
 
 function setupEventListeners() {
     // Session type buttons
@@ -83,7 +101,21 @@ function setupEventListeners() {
 
     // Task selection
     const selectTaskBtn = document.getElementById('selectTaskBtn');
-    if (selectTaskBtn) selectTaskBtn.addEventListener('click', openTaskSelectionModal);
+    const refreshTasksBtn = document.getElementById('refreshTasksBtn');
+
+    console.log('selectTaskBtn found:', selectTaskBtn); // Debug log
+
+    if (selectTaskBtn) {
+        selectTaskBtn.addEventListener('click', function (e) {
+            console.log('Select Task button clicked!'); // Debug log
+            e.preventDefault();
+            openTaskSelectionModal();
+        });
+    } else {
+        console.error('selectTaskBtn element not found!');
+    }
+
+    if (refreshTasksBtn) refreshTasksBtn.addEventListener('click', loadUserTasks);
 
     // Modal controls
     const closeTaskModal = document.getElementById('closeTaskModal');
@@ -93,17 +125,34 @@ function setupEventListeners() {
 
     if (closeTaskModal) closeTaskModal.addEventListener('click', closeTaskSelectionModalFunc);
     if (cancelTaskSelection) cancelTaskSelection.addEventListener('click', closeTaskSelectionModalFunc);
-    if (confirmTaskSelection) confirmTaskSelection.addEventListener('click', confirmTaskSelectionFunc);
+    if (confirmTaskSelection) {
+        confirmTaskSelection.addEventListener('click', (e) => {
+            console.log('Confirm button clicked!'); // Debug log
+            confirmTaskSelectionFunc();
+        });
+    }
     if (taskSelectionModal) {
         taskSelectionModal.addEventListener('click', (e) => {
             if (e.target === taskSelectionModal) closeTaskSelectionModalFunc();
         });
     }
 
-    // Task option selection
+    // Task option selection - multiple event handlers for reliability
     document.addEventListener('click', (e) => {
         if (e.target.closest('.task-option')) {
+            e.preventDefault();
+            e.stopPropagation();
             selectTaskOption(e.target.closest('.task-option'));
+        }
+    });
+
+    // Additional event handler specifically for the modal container
+    document.addEventListener('click', (e) => {
+        const taskOption = e.target.closest('#taskListContainer .task-option');
+        if (taskOption) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectTaskOption(taskOption);
         }
     });
 
@@ -272,13 +321,39 @@ function updateSessionButtons() {
     }
 }
 
-function startTimer() {
+async function startTimer() {
     if (timerState.isPaused) {
         // Resume timer
         timerState.isPaused = false;
+
+        // Resume the Pomodoro session in the database if there's an active session
+        if (timerState.activePomodoroSession?.id) {
+            try {
+                await resumePomodoroSession(timerState.activePomodoroSession.id);
+            } catch (error) {
+                console.error('Failed to resume Pomodoro session in database:', error);
+            }
+        }
     } else {
         // Start new timer
         timerState.isRunning = true;
+
+        // Start a new Pomodoro session in the database if it's a focus session
+        if (timerState.currentSession === 'focus' && timerState.currentTaskId) {
+            try {
+                const sessionData = await startPomodoroSession(timerState.currentTaskId, timerSettings.focusDuration);
+                // Store session with proper ID structure from backend response
+                timerState.activePomodoroSession = {
+                    id: sessionData.session._id,
+                    session: sessionData.session,
+                    currentInterval: sessionData.currentInterval
+                };
+                console.log('Active Pomodoro session set:', timerState.activePomodoroSession);
+            } catch (error) {
+                console.error('Failed to start Pomodoro session in database:', error);
+                showNotification('Warning: Session not saved to database', 'warning');
+            }
+        }
     }
 
     // Update button visibility
@@ -307,6 +382,14 @@ function startTimer() {
 function pauseTimer() {
     timerState.isPaused = true;
     clearInterval(timerInterval);
+
+    // Pause the Pomodoro session in the database if there's an active session
+    if (timerState.activePomodoroSession?.id) {
+        pausePomodoroSession(timerState.activePomodoroSession.id)
+            .catch(error => {
+                console.error('Failed to pause Pomodoro session in database:', error);
+            });
+    }
 
     // Update button visibility
     const startBtn = document.getElementById('startBtn');
@@ -338,7 +421,7 @@ function resetTimer() {
     saveTimerState();
 }
 
-function timerComplete() {
+async function timerComplete() {
     clearInterval(timerInterval);
     timerState.isRunning = false;
     timerState.isPaused = false;
@@ -368,12 +451,28 @@ function timerComplete() {
         });
     }
 
-    // Show completion notification
+    // Show completion notification and handle database operations
     if (timerState.currentSession === 'focus') {
         showNotification('Focus session completed! Great job!', 'success');
         timerState.sessionCount++;
 
-        // Record session
+        // Complete the Pomodoro session in the database
+        if (timerState.activePomodoroSession) {
+            try {
+                await completePomodoroSession(timerState.activePomodoroSession.id);
+                await savePomodoroInterval(
+                    timerState.activePomodoroSession.id,
+                    'work',
+                    timerSettings.focusDuration
+                );
+                timerState.activePomodoroSession = null;
+            } catch (error) {
+                console.error('Failed to complete Pomodoro session in database:', error);
+                showNotification('Warning: Session completion not saved to database', 'warning');
+            }
+        }
+
+        // Record session (fallback to localStorage)
         recordPomodoroSession();
 
         // Auto-suggest break
@@ -395,6 +494,24 @@ function timerComplete() {
             }
         }
     } else {
+        // Handle break completion - save break intervals if we have an active session
+        if (timerState.activePomodoroSession) {
+            try {
+                const breakType = timerState.currentSession === 'longBreak' ? 'long_break' : 'short_break';
+                const breakDuration = timerState.currentSession === 'longBreak' ?
+                    timerSettings.longBreakDuration : timerSettings.shortBreakDuration;
+
+                await savePomodoroInterval(
+                    timerState.activePomodoroSession.id,
+                    breakType,
+                    breakDuration
+                );
+            } catch (error) {
+                console.error('Failed to save break interval to database:', error);
+                showNotification('Warning: Break time not saved to database', 'warning');
+            }
+        }
+
         showNotification('Break completed! Ready to focus?', 'info');
         if (timerSettings.notifications.autoStartBreaks) {
             switchSession('focus');
@@ -449,11 +566,29 @@ function updateProgressCircle() {
     progressCircle.style.strokeDashoffset = offset;
 }
 
+// Make functions globally available for onclick handlers
+window.openTaskSelectionModal = openTaskSelectionModal;
+window.closeTaskSelectionModalFunc = closeTaskSelectionModalFunc;
+window.handleTaskClick = handleTaskClick;
+
 function openTaskSelectionModal() {
+    console.log('openTaskSelectionModal called'); // Debug log
+
+    // Reset selection state
+    timerState.selectedTaskId = null;
+    timerState.selectedTask = null;
+
     const modal = document.getElementById('taskSelectionModal');
+    console.log('Modal element found:', modal); // Debug log
+
     if (modal) {
+        console.log('Modal classes before:', modal.className); // Debug log
         modal.classList.remove('hidden');
+        console.log('Modal classes after:', modal.className); // Debug log
         loadTaskOptions();
+        console.log('Modal opened and loadTaskOptions called'); // Debug log
+    } else {
+        console.error('Task selection modal not found!');
     }
 }
 
@@ -469,58 +604,158 @@ function closeTaskSelectionModalFunc() {
 }
 
 function loadTaskOptions() {
-    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const pendingTasks = tasks.filter(task => task.status === 'pending');
+    // Use the tasks loaded from database
+    const pendingTasks = (timerState.userTasks || []).filter(task => task.status === 'pending');
 
-    const modalTaskList = document.querySelector('#taskSelectionModal .space-y-3');
-    if (modalTaskList && pendingTasks.length > 0) {
-        modalTaskList.innerHTML = pendingTasks.map(task => {
-            const priorityColors = { high: 'red', medium: 'yellow', low: 'green' };
-            const color = priorityColors[task.priority] || 'blue';
+    console.log('Loading task options, pending tasks:', pendingTasks); // Debug log
 
-            return `
-                <div class="task-option p-3 bg-dark-bg hover:bg-gray-800 rounded-lg cursor-pointer transition-colors" data-task="${task.title}">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-3 h-3 bg-${color}-500 rounded-full"></div>
-                        <span class="text-white">${task.title}</span>
+    const modalTaskList = document.getElementById('taskListContainer');
+    if (modalTaskList) {
+        if (pendingTasks.length > 0) {
+            modalTaskList.innerHTML = pendingTasks.map((task, index) => {
+                console.log('Processing task:', task); // Debug individual task
+                const priorityColors = { high: 'red', medium: 'yellow', low: 'green' };
+                const color = priorityColors[task.priority] || 'blue';
+
+                // Handle date formatting safely
+                let dueDateText = 'No due date';
+                try {
+                    if (task.deadline || task.dueDate) {
+                        const dateField = task.deadline || task.dueDate;
+                        const taskDate = new Date(dateField);
+                        if (!isNaN(taskDate.getTime())) {
+                            dueDateText = formatDueDate(taskDate);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error formatting date for task:', task.title, error);
+                }
+
+                return `
+                    <div class="task-option p-3 bg-dark-bg hover:bg-gray-800 rounded-lg cursor-pointer transition-colors border border-gray-600" 
+                         data-task-id="${task._id}" 
+                         data-task="${task.title}"
+                         onclick="handleTaskClick('${task._id}', '${task.title.replace(/'/g, "\\'")}'); return false;">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-${color}-500 rounded-full"></div>
+                            <span class="text-white">${task.title}</span>
+                        </div>
+                        <p class="text-gray-400 text-sm ml-6">${task.priority ? task.priority.charAt(0).toUpperCase() + task.priority.slice(1) : 'Medium'} Priority • ${dueDateText}</p>
                     </div>
-                    <p class="text-gray-400 text-sm ml-6">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority • ${formatDueDate(new Date(task.dueDate))}</p>
+                `;
+            }).join('');
+
+            console.log('Task list HTML generated, length:', modalTaskList.innerHTML.length); // Debug log
+        } else {
+            modalTaskList.innerHTML = `
+                <div class="text-center py-6">
+                    <p class="text-gray-400">No pending tasks found</p>
+                    <p class="text-sm text-gray-500 mt-2">Create some tasks first to use with Pomodoro sessions</p>
+                    <a href="tasks.html" class="inline-block mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm">
+                        Go to Tasks
+                    </a>
                 </div>
             `;
-        }).join('');
+        }
+    } else {
+        console.error('Task list container not found!');
     }
 }
 
-function selectTaskOption(option) {
+// Direct task click handler to bypass event delegation issues
+function handleTaskClick(taskId, taskTitle) {
+    console.log('handleTaskClick called directly:', { taskId, taskTitle }); // Debug log
+
     // Clear previous selections
     document.querySelectorAll('.task-option').forEach(opt => {
-        opt.classList.remove('bg-indigo-600');
+        opt.classList.remove('bg-indigo-600', 'ring-2', 'ring-indigo-500');
     });
 
-    // Select current option
-    option.classList.add('bg-indigo-600');
+    // Find and select the clicked task
+    const clickedTask = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (clickedTask) {
+        clickedTask.classList.add('bg-indigo-600', 'ring-2', 'ring-indigo-500');
+        console.log('Visual selection applied to task element'); // Debug log
+    }
 
-    // Store selected task
-    const taskName = option.dataset.task;
-    timerState.selectedTask = taskName;
+    // Store selection
+    timerState.selectedTaskId = taskId;
+    timerState.selectedTask = taskTitle;
+
+    console.log('Task selection stored:', {
+        selectedTaskId: timerState.selectedTaskId,
+        selectedTask: timerState.selectedTask
+    }); // Debug log
+}
+
+function selectTaskOption(option) {
+    console.log('selectTaskOption called with:', option); // Debug log
+    console.log('Option dataset:', option.dataset); // Debug dataset
+
+    // Clear previous selections
+    document.querySelectorAll('.task-option').forEach(opt => {
+        opt.classList.remove('bg-indigo-600', 'ring-2', 'ring-indigo-500');
+    });
+
+    // Select current option with visual feedback
+    option.classList.add('bg-indigo-600', 'ring-2', 'ring-indigo-500');
+
+    // Store selected task ID and name
+    const taskId = option.dataset.taskId || option.getAttribute('data-task-id');
+    const taskName = option.dataset.task || option.getAttribute('data-task');
+
+    console.log('Selected task:', { taskId, taskName }); // Debug log
+
+    if (taskId && taskName) {
+        timerState.selectedTaskId = taskId;
+        timerState.selectedTask = taskName;
+        console.log('Task selection stored successfully'); // Debug log
+    } else {
+        console.error('Failed to get task data from option:', option);
+    }
 }
 
 function confirmTaskSelectionFunc() {
-    if (timerState.selectedTask) {
+    console.log('confirmTaskSelectionFunc called, current state:', {
+        selectedTask: timerState.selectedTask,
+        selectedTaskId: timerState.selectedTaskId
+    }); // Debug log
+
+    if (timerState.selectedTask && timerState.selectedTaskId) {
+        // Update current task
         timerState.currentTask = timerState.selectedTask;
+        timerState.currentTaskId = timerState.selectedTaskId;
+
+        console.log('Task confirmed, updating display:', {
+            currentTask: timerState.currentTask,
+            currentTaskId: timerState.currentTaskId
+        }); // Debug log
+
         updateCurrentTaskDisplay();
         closeTaskSelectionModalFunc();
         showNotification(`Selected task: ${timerState.currentTask}`, 'success');
         saveTimerState();
+
+        // Clear selection state
+        timerState.selectedTask = null;
+        timerState.selectedTaskId = null;
+
+        console.log('Task selection completed successfully'); // Debug log
     } else {
+        console.log('No task selected, showing error'); // Debug log
         showNotification('Please select a task first', 'error');
     }
 }
 
 function updateCurrentTaskDisplay() {
+    console.log('updateCurrentTaskDisplay called with task:', timerState.currentTask); // Debug log
+
     const currentTaskElement = document.querySelector('#currentTask span');
     if (currentTaskElement) {
-        currentTaskElement.textContent = timerState.currentTask;
+        currentTaskElement.textContent = timerState.currentTask || 'No task selected';
+        console.log('Updated task display to:', timerState.currentTask); // Debug log
+    } else {
+        console.error('Current task element not found!');
     }
 }
 
@@ -717,4 +952,260 @@ function getNotificationIcon(type) {
         default:
             return 'fa-bell';
     }
+}
+
+// ===== DATABASE INTEGRATION FUNCTIONS =====
+
+// Load user tasks from database
+// Load user's tasks from the database
+async function loadUserTasks() {
+    try {
+        console.log('Loading user tasks...'); // Debug log
+
+        // Check if authenticated first
+        if (!isAuthenticated()) {
+            console.log('User not authenticated');
+            return;
+        }
+
+        const response = await apiCall('/tasks');
+        console.log('API response:', response); // Debug log
+
+        const tasks = response.tasks || response; // Handle both response formats
+
+        // Filter for active tasks (not completed)
+        timerState.userTasks = tasks.filter(task =>
+            task.status !== 'completed' && task.status !== 'cancelled'
+        );
+
+        console.log('Loaded tasks:', timerState.userTasks); // Debug log
+
+        // If no current task selected, select the first available task
+        if (!timerState.currentTask && timerState.userTasks.length > 0) {
+            const firstTask = timerState.userTasks[0];
+            timerState.currentTask = firstTask.title;
+            timerState.currentTaskId = firstTask._id;
+            console.log('Auto-selected first task:', firstTask.title);
+        }
+
+        updateCurrentTaskDisplay();
+        updateTaskSelectionModal();
+
+    } catch (error) {
+        console.error('Error loading tasks:', error);
+        showNotification('Failed to load tasks from database. Please check if you are logged in.', 'error');
+
+        // Fallback: Initialize empty task array
+        if (!timerState.userTasks || timerState.userTasks.length === 0) {
+            timerState.userTasks = [];
+            timerState.currentTask = 'No task selected - Focus Session';
+            timerState.currentTaskId = null;
+            updateCurrentTaskDisplay();
+        }
+    }
+}
+
+// Start a new Pomodoro session in the database
+async function startPomodoroSession(taskId, duration) {
+    try {
+        const sessionData = {
+            taskId: taskId,
+            workDuration: duration,
+            shortBreak: timerSettings.shortBreakDuration,
+            longBreak: timerSettings.longBreakDuration
+        };
+
+        const response = await apiCall('/pomodoro/sessions/start', {
+            method: 'POST',
+            body: JSON.stringify(sessionData)
+        });
+
+        console.log('Pomodoro session started:', response);
+        return response;
+
+    } catch (error) {
+        console.error('Error starting Pomodoro session:', error);
+        throw error;
+    }
+}
+
+// Complete a Pomodoro session in the database
+async function completePomodoroSession(sessionId) {
+    if (!sessionId) return;
+
+    try {
+        const response = await apiCall(`/pomodoro/sessions/${sessionId}/end`, {
+            method: 'PUT'
+        });
+
+        console.log('Pomodoro session completed:', response);
+
+        // Reset session ID
+        timerState.activePomodoroSession = null;
+
+    } catch (error) {
+        console.error('Error completing Pomodoro session:', error);
+        throw error;
+    }
+}
+
+// Save Pomodoro interval to database (transition to next interval)
+async function savePomodoroInterval(sessionId, type, duration, completed = true) {
+    if (!sessionId) return;
+
+    try {
+        const intervalData = {
+            workDuration: duration,
+            shortBreak: timerSettings.shortBreakDuration,
+            longBreak: timerSettings.longBreakDuration
+        };
+
+        const response = await apiCall(`/pomodoro/sessions/${sessionId}/next-interval`, {
+            method: 'POST',
+            body: JSON.stringify(intervalData)
+        });
+
+        console.log('Pomodoro interval transitioned:', response);
+        return response;
+
+    } catch (error) {
+        console.error('Error transitioning Pomodoro interval:', error);
+        throw error;
+    }
+}
+
+// Pause a Pomodoro session in the database
+async function pausePomodoroSession(sessionId) {
+    if (!sessionId) return;
+
+    try {
+        const response = await apiCall(`/pomodoro/sessions/${sessionId}/pause`, {
+            method: 'PUT'
+        });
+
+        console.log('Pomodoro session paused:', response);
+
+    } catch (error) {
+        console.error('Error pausing Pomodoro session:', error);
+        throw error;
+    }
+}
+
+// Resume a Pomodoro session in the database
+async function resumePomodoroSession(sessionId) {
+    if (!sessionId) return;
+
+    try {
+        const response = await apiCall(`/pomodoro/sessions/${sessionId}/resume`, {
+            method: 'PUT'
+        });
+
+        console.log('Pomodoro session resumed:', response);
+
+    } catch (error) {
+        console.error('Error resuming Pomodoro session:', error);
+        throw error;
+    }
+}
+
+// Check for active Pomodoro session on page load
+async function checkActiveSession() {
+    try {
+        const response = await apiCall('/pomodoro/active', {
+            method: 'GET'
+        });
+
+        if (response.activeSession) {
+            timerState.activePomodoroSession = {
+                id: response.activeSession._id,
+                session: response.activeSession,
+                currentInterval: response.currentInterval
+            };
+
+            // Update UI if there's an active session
+            if (response.activeSession.taskId) {
+                timerState.currentTaskId = response.activeSession.taskId._id;
+                timerState.currentTask = response.activeSession.taskId.title;
+                updateCurrentTaskDisplay();
+            }
+
+            console.log('Restored active Pomodoro session:', timerState.activePomodoroSession);
+        }
+    } catch (error) {
+        console.error('Error checking for active session:', error);
+    }
+}
+
+// Update task selection modal with real tasks
+function updateTaskSelectionModal() {
+    const taskList = document.getElementById('taskList');
+    if (!taskList) return;
+
+    if (timerState.userTasks.length === 0) {
+        taskList.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-tasks text-gray-400 text-3xl mb-4"></i>
+                <p class="text-gray-400 mb-4">No active tasks found</p>
+                <a href="tasks.html" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg inline-block">
+                    Create Your First Task
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    taskList.innerHTML = timerState.userTasks.map(task => {
+        const priorityColor = getPriorityColor(task.priority);
+        const isSelected = task._id === timerState.currentTaskId;
+
+        return `
+            <div class="task-option p-4 bg-dark-card rounded-lg cursor-pointer transition-all hover:bg-gray-600 ${isSelected ? 'ring-2 ring-indigo-500' : ''}" 
+                 data-task-id="${task._id}" 
+                 data-task-title="${task.title}"
+                 onclick="selectTaskFromModal('${task._id}', '${task.title}')">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 ${priorityColor} rounded-full"></div>
+                        <div>
+                            <h4 class="text-white font-medium">${task.title}</h4>
+                            <p class="text-gray-400 text-sm">${task.category || 'General'}</p>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
+                        ${task.priority || 'medium'}
+                    </div>
+                </div>
+                ${task.description ? `<p class="text-gray-300 text-sm mt-2">${task.description}</p>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// Get priority color class
+function getPriorityColor(priority) {
+    switch (priority) {
+        case 'urgent': return 'bg-red-500';
+        case 'high': return 'bg-orange-500';
+        case 'medium': return 'bg-yellow-500';
+        case 'low': return 'bg-green-500';
+        default: return 'bg-blue-500';
+    }
+}
+
+// Select task from modal
+function selectTaskFromModal(taskId, taskTitle) {
+    timerState.currentTaskId = taskId;
+    timerState.currentTask = taskTitle;
+
+    // Update visual selection
+    document.querySelectorAll('.task-option').forEach(option => {
+        option.classList.remove('ring-2', 'ring-indigo-500');
+    });
+
+    const selectedOption = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('ring-2', 'ring-indigo-500');
+    }
+
+    updateCurrentTaskDisplay();
 }

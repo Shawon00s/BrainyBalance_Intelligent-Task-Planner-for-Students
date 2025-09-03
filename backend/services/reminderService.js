@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
 import Reminder from '../models/Reminder.js';
+import Notification from '../models/Notification.js';
 import { sendEmail } from './emailService.js';
 
 // Check window (in milliseconds) to consider tasks whose scheduled reminder falls within the last minute
@@ -52,9 +53,21 @@ async function findAndSendReminders() {
 
                 await sendEmail({ to: task.userId.email, subject, html });
 
+                // Create in-app notification
+                const notification = new Notification({
+                    userId: task.userId._id,
+                    type: 'deadline_warning',
+                    title: 'Task Deadline Approaching',
+                    message: `"${task.title}" is due in 6 hours (${task.deadline.toLocaleString()})`,
+                    relatedEntityId: task._id,
+                    relatedEntityType: 'task',
+                    priority: task.priority === 'urgent' ? 'high' : 'medium'
+                });
+                await notification.save();
+
                 reminder.sentAt = new Date();
                 await reminder.save();
-                console.log(`reminderService - Reminder recorded for task ${task._id}`);
+                console.log(`reminderService - Reminder and notification recorded for task ${task._id}`);
             } catch (err) {
                 console.error('reminderService - Failed to send reminder for task', task._id, err);
             }
@@ -64,11 +77,95 @@ async function findAndSendReminders() {
     }
 }
 
+async function createDeadlineNotifications() {
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Find tasks due today that don't have deadline notifications yet
+        const tasksDueToday = await Task.find({
+            deadline: { $gte: today, $lt: tomorrow },
+            status: { $ne: 'completed' }
+        }).populate('userId');
+
+        for (const task of tasksDueToday) {
+            // Check if notification already exists for this task today
+            const existingNotification = await Notification.findOne({
+                userId: task.userId._id,
+                relatedEntityId: task._id,
+                type: 'deadline_warning',
+                createdAt: { $gte: today }
+            });
+
+            if (!existingNotification) {
+                const hoursLeft = Math.ceil((task.deadline - now) / (1000 * 60 * 60));
+                let message = `"${task.title}" is due today`;
+                if (hoursLeft > 0) {
+                    message += ` in ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''}`;
+                } else {
+                    message += ' and is overdue';
+                }
+
+                const notification = new Notification({
+                    userId: task.userId._id,
+                    type: 'deadline_warning',
+                    title: 'Task Due Today',
+                    message: message,
+                    relatedEntityId: task._id,
+                    relatedEntityType: 'task',
+                    priority: 'high'
+                });
+                await notification.save();
+                console.log(`Created deadline notification for task ${task._id}`);
+            }
+        }
+
+        // Find overdue tasks
+        const overdueTasks = await Task.find({
+            deadline: { $lt: today },
+            status: { $ne: 'completed' }
+        }).populate('userId');
+
+        for (const task of overdueTasks) {
+            // Check if overdue notification already exists for this task
+            const existingNotification = await Notification.findOne({
+                userId: task.userId._id,
+                relatedEntityId: task._id,
+                type: 'deadline_warning',
+                message: { $regex: 'overdue' },
+                createdAt: { $gte: today }
+            });
+
+            if (!existingNotification) {
+                const daysOverdue = Math.floor((now - task.deadline) / (1000 * 60 * 60 * 24));
+                const message = `"${task.title}" is ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue`;
+
+                const notification = new Notification({
+                    userId: task.userId._id,
+                    type: 'deadline_warning',
+                    title: 'Overdue Task',
+                    message: message,
+                    relatedEntityId: task._id,
+                    relatedEntityType: 'task',
+                    priority: 'high'
+                });
+                await notification.save();
+                console.log(`Created overdue notification for task ${task._id}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error creating deadline notifications:', error);
+    }
+}
+
 export function startReminderScheduler() {
     // Run every minute
     cron.schedule('* * * * *', () => {
         console.log('reminderService - Cron tick:', new Date().toISOString());
         findAndSendReminders();
+        createDeadlineNotifications();
     });
     console.log('reminderService - Scheduler started (runs every minute)');
 }

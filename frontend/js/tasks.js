@@ -52,6 +52,24 @@ function setupEventListeners() {
         cancelTask.addEventListener('click', closeAddTaskModal);
     }
 
+    // Edit task form
+    const editTaskForm = document.getElementById('editTaskForm');
+    if (editTaskForm) {
+        editTaskForm.addEventListener('submit', handleEditTask);
+    }
+
+    // Close edit modal button
+    const closeEditModal = document.getElementById('closeEditModal');
+    if (closeEditModal) {
+        closeEditModal.addEventListener('click', closeEditTaskModal);
+    }
+
+    // Cancel edit task button
+    const cancelEditTask = document.getElementById('cancelEditTask');
+    if (cancelEditTask) {
+        cancelEditTask.addEventListener('click', closeEditTaskModal);
+    }
+
     // Filter buttons
     const filterButtons = document.querySelectorAll('.filter-btn');
     filterButtons.forEach(btn => {
@@ -476,10 +494,81 @@ function editTask(taskId) {
     const task = tasks.find(t => t._id === taskId);
     if (!task) return;
 
-    // For now, let's use a simple prompt. In a real app, you'd use a proper modal
-    const newTitle = prompt('Edit task title:', task.title);
-    if (newTitle && newTitle !== task.title) {
-        updateTask(taskId, { title: newTitle });
+    // Populate the edit form with current task data
+    document.getElementById('editTaskId').value = task._id;
+    document.getElementById('editTaskTitle').value = task.title || '';
+    document.getElementById('editTaskDescription').value = task.description || '';
+    document.getElementById('editTaskPriority').value = task.priority || '';
+    document.getElementById('editTaskCategory').value = task.category || '';
+    document.getElementById('editTaskEstimatedTime').value = task.estimatedTime || 60;
+
+    // Handle tags - convert array to string if needed
+    const tagsValue = Array.isArray(task.tags) ? task.tags.join(', ') : task.tags || '';
+    document.getElementById('editTaskTags').value = tagsValue;
+
+    // Set the due date in the date picker
+    if (task.dueDate && window.editDatePicker) {
+        const dueDate = new Date(task.dueDate);
+        window.editDatePicker.setDate(dueDate);
+    }
+
+    // Show the edit modal
+    const modal = document.getElementById('editTaskModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+async function handleEditTask(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const taskId = formData.get('taskId');
+
+    // Validate required fields
+    const title = formData.get('title').trim();
+    const priority = formData.get('priority');
+    const category = formData.get('category');
+    const dueDate = formData.get('dueDate');
+
+    if (!title || !priority || !category || !dueDate) {
+        showNotification('Please fill in all required fields', 'error');
+        return;
+    }
+
+    // Prepare update data
+    const updateData = {
+        title: title,
+        description: formData.get('description').trim(),
+        priority: priority,
+        category: category,
+        dueDate: dueDate,
+        estimatedTime: parseInt(formData.get('estimatedTime')) || 60
+    };
+
+    // Handle tags
+    const tagsInput = formData.get('tags').trim();
+    if (tagsInput) {
+        updateData.tags = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    } else {
+        updateData.tags = [];
+    }
+
+    // Use existing updateTask function
+    await updateTask(taskId, updateData);
+    closeEditTaskModal();
+}
+
+function closeEditTaskModal() {
+    const modal = document.getElementById('editTaskModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.getElementById('editTaskForm').reset();
+
+        // Clear the date picker
+        if (window.editDatePicker) {
+            window.editDatePicker.clear();
+        }
     }
 }
 
