@@ -6,11 +6,11 @@ let currentSort = 'deadline';
 document.addEventListener('DOMContentLoaded', function () {
     console.log('Tasks page loaded');
 
-    // Check authentication - but continue anyway for development
+    // Check authentication and redirect if not logged in
     if (!isAuthenticated()) {
-        console.log('Not authenticated, but continuing for development...');
-        // Set a temporary token for development
-        localStorage.setItem('authToken', 'demo-token-for-testing');
+        console.log('User not authenticated, redirecting to login...');
+        window.location.href = 'login.html';
+        return;
     }
 
     // Initialize tasks page

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Authentication Test</title>
+    <script src="js/auth.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a202c;
+            color: white;
+        }
+
+        .test-section {
+            background: #2d3748;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4299e1;
+        }
+
+        button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #3182ce;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .success {
+            background: #2d5a42;
+            color: #9ae6b4;
+        }
+
+        .error {
+            background: #742a2a;
+            color: #feb2b2;
+        }
+
+        .info {
+            background: #2c5282;
+            color: #90cdf4;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #4a5568;
+            background: #4a5568;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔐 Authentication Test Page</h1>
+
+    <div class="test-section">
+        <h2>Current Authentication Status</h2>
+        <div id="authStatus"></div>
+        <button onclick="checkAuth()">Check Authentication</button>
+        <button onclick="clearAuth()">Clear Authentication</button>
+        <button onclick="showTokens()">Show Tokens</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Login</h2>
+        <div>
+            <input type="email" id="testEmail" placeholder="Email" value="test@example.com">
+            <input type="password" id="testPassword" placeholder="Password" value="password123">
+            <button onclick="testLogin()">Test Login</button>
+        </div>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Protected Pages</h2>
+        <button onclick="testPage('dashboard.html')">Test Dashboard</button>
+        <button onclick="testPage('tasks.html')">Test Tasks</button>
+        <button onclick="testPage('schedule.html')">Test Schedule</button>
+        <button onclick="testPage('analytics.html')">Test Analytics</button>
+        <button onclick="testPage('pomodoro.html')">Test Pomodoro</button>
+        <button onclick="testPage('ai-recommendations.html')">Test AI Recommendations</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test API Calls</h2>
+        <button onclick="testApiCall('/tasks')">Test Tasks API</button>
+        <button onclick="testApiCall('/analytics/dashboard')">Test Analytics API</button>
+        <button onclick="testApiCall('/auth/profile')">Test Profile API</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <script>
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function checkAuth() {
+            const token = getToken();
+            const user = getUser();
+            const isAuth = isAuthenticated();
+
+            let message = `
+                <strong>Authentication Status:</strong> ${isAuth ? '✅ Authenticated' : '❌ Not Authenticated'}<br>
+                <strong>Token:</strong> ${token ? '✅ Present' : '❌ Missing'}<br>
+                <strong>User:</strong> ${user ? '✅ Present (' + user.email + ')' : '❌ Missing'}
+            `;
+
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const exp = new Date(payload.exp * 1000);
+                    const now = new Date();
+                    message += `<br><strong>Token Expires:</strong> ${exp.toLocaleString()}`;
+                    message += `<br><strong>Token Valid:</strong> ${exp > now ? '✅ Valid' : '❌ Expired'}`;
+                } catch (e) {
+                    message += `<br><strong>Token Format:</strong> ❌ Invalid`;
+                }
+            }
+
+            updateStatus('authStatus', message, isAuth ? 'success' : 'error');
+        }
+
+        function clearAuth() {
+            removeToken();
+            updateStatus('authStatus', '🗑️ Authentication cleared', 'info');
+            setTimeout(checkAuth, 100);
+        }
+
+        function showTokens() {
+            const authToken = localStorage.getItem('authToken');
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+
+            console.log('authToken:', authToken);
+            console.log('token:', token);
+            console.log('user:', user);
+
+            updateStatus('authStatus', '📋 Tokens logged to console', 'info');
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+
+            try {
+                updateStatus('loginResult', '🔄 Testing login...', 'info');
+                await loginUser(email, password);
+                updateStatus('loginResult', '✅ Login successful!', 'success');
+                setTimeout(checkAuth, 500);
+            } catch (error) {
+                updateStatus('loginResult', `❌ Login failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testPage(page) {
+            // Open in new tab to see redirect behavior
+            window.open(page, '_blank');
+        }
+
+        async function testApiCall(endpoint) {
+            try {
+                updateStatus('apiResult', `🔄 Testing ${endpoint}...`, 'info');
+                const result = await apiCall(endpoint);
+                updateStatus('apiResult', `✅ API call successful: ${JSON.stringify(result).substring(0, 200)}...`, 'success');
+            } catch (error) {
+                updateStatus('apiResult', `❌ API call failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        checkAuth();
+    </script>
+</body>
+
+</html>

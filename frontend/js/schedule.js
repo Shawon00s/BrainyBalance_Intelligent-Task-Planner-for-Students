@@ -3,9 +3,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Check if user is logged in
     const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     if (!token) {
-        // For debugging purposes, let's set a temporary token
-        console.warn('No token found, setting demo token for testing');
-        localStorage.setItem('authToken', 'demo-token-for-testing');
+        console.log('User not authenticated, redirecting to login...');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Double-check authentication with the proper function
+    if (!isAuthenticated()) {
+        console.log('Authentication validation failed, redirecting to login...');
+        window.location.href = 'login.html';
+        return;
     }
 
     // Initialize schedule page

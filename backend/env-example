@@ -1,0 +1,20 @@
+PORT=
+MONGO_URI=
+JWT_SECRET=
+NODE_ENV=
+FRONTEND_URL=
+
+# Google Calendar API Configuration
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+# Gemini API Key for Google AI
+GEMINI_API_KEY=
+
+# Email Configuration for OTP verification
+EMAIL_HOST=
+EMAIL_PORT=
+EMAIL_USER=
+EMAIL_PASS=
+EMAIL_FROM=

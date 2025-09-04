@@ -4,24 +4,45 @@ const API_BASE = 'http://localhost:3000/api';
 let charts = {};
 
 function requireAuthToken() {
-    const token = localStorage.getItem('token');
-    return token || null;
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+    if (!token) {
+        console.log('No authentication token found, redirecting to login...');
+        window.location.href = 'login.html';
+        return null;
+    }
+    return token;
 }
+
+// Check authentication on page load
+document.addEventListener('DOMContentLoaded', function () {
+    if (!isAuthenticated()) {
+        console.log('User not authenticated, redirecting to login...');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Initialize analytics if authenticated
+    loadAnalytics();
+});
 
 async function fetchJson(url, token) {
     const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    if (!res.ok) {
+        if (res.status === 401) {
+            console.log('Authentication failed, redirecting to login...');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+            return;
+        }
+        throw new Error(`${res.status} ${res.statusText}`);
+    }
     return res.json();
 }
 
 async function loadAnalytics() {
     const token = requireAuthToken();
-    if (!token) {
-        // Clear UI and require login
-        document.getElementById('totalStudyHours').textContent = 'Login required';
-        document.getElementById('tasksCompleted').textContent = '';
-        return;
-    }
+    if (!token) return;
 
     const period = document.getElementById('analyticsPeriodSelector')?.value || '7';
     let periodStr = 'week';
