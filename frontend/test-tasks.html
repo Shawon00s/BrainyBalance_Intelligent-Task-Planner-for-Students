@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Search/Filter Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: #1a202c;
+            color: white;
+            padding: 20px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2d3748;
+            border-radius: 8px;
+        }
+
+        input,
+        select {
+            background: #4a5568;
+            color: white;
+            padding: 8px;
+            margin: 5px;
+            border-radius: 4px;
+            border: 1px solid #718096;
+        }
+
+        .task-card {
+            background: #4a5568;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid #3182ce;
+        }
+
+        button {
+            background: #3182ce;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #2c5282;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Task Search and Filter Test</h1>
+
+    <div class="test-section">
+        <h2>Controls</h2>
+        <input type="text" id="searchTasks" placeholder="Search tasks..." onkeyup="handleSearch()">
+
+        <select id="priorityFilter" onchange="handleFilterChange()">
+            <option value="">All Priorities</option>
+            <option value="high">High Priority</option>
+            <option value="medium">Medium Priority</option>
+            <option value="low">Low Priority</option>
+        </select>
+
+        <select id="statusFilter" onchange="handleFilterChange()">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+        </select>
+
+        <select id="categoryFilter" onchange="handleFilterChange()">
+            <option value="">All Categories</option>
+            <option value="assignment">Assignment</option>
+            <option value="exam">Exam</option>
+            <option value="project">Project</option>
+            <option value="study">Study</option>
+        </select>
+
+        <select id="sortTasks" onchange="handleSortChange()">
+            <option value="deadline">Sort by Deadline</option>
+            <option value="priority">Sort by Priority</option>
+            <option value="title">Sort by Title</option>
+            <option value="created">Sort by Created</option>
+        </select>
+
+        <button onclick="clearAllFilters()">Clear All Filters</button>
+        <button onclick="addSampleTasks()">Add Sample Tasks</button>
+        <button onclick="clearTasks()">Clear Tasks</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Tasks (<span id="taskCount">0</span>)</h2>
+        <div id="taskList"></div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let currentFilter = 'all';
+        let currentSort = 'deadline';
+        let searchDebounceTimer;
+
+        function addSampleTasks() {
+            tasks = [
+                {
+                    id: 1,
+                    title: "Complete CSE327 Assignment",
+                    description: "Finish the software requirements specification document",
+                    deadline: "2025-09-10T23:59:00",
+                    priority: "high",
+                    category: "assignment",
+                    status: "pending",
+                    estimatedTime: 120,
+                    tags: ["university", "software engineering", "urgent"]
+                },
+                {
+                    id: 2,
+                    title: "Study for Mathematics Exam",
+                    description: "Review calculus and linear algebra chapters",
+                    deadline: "2025-09-15T09:00:00",
+                    priority: "medium",
+                    category: "exam",
+                    status: "in-progress",
+                    estimatedTime: 180,
+                    tags: ["mathematics", "exam", "calculus"]
+                },
+                {
+                    id: 3,
+                    title: "Research Project Literature Review",
+                    description: "Find and review 10 academic papers for the research project",
+                    deadline: "2025-09-20T17:00:00",
+                    priority: "low",
+                    category: "project",
+                    status: "pending",
+                    estimatedTime: 300,
+                    tags: ["research", "literature", "academic"]
+                },
+                {
+                    id: 4,
+                    title: "Physics Lab Report",
+                    description: "Write lab report for experiment on wave interference",
+                    deadline: "2025-09-12T23:59:00",
+                    priority: "high",
+                    category: "assignment",
+                    status: "completed",
+                    estimatedTime: 90,
+                    tags: ["physics", "lab", "experiment"]
+                },
+                {
+                    id: 5,
+                    title: "Study Session - Data Structures",
+                    description: "Review binary trees and graph algorithms",
+                    deadline: "2025-09-08T18:00:00",
+                    priority: "medium",
+                    category: "study",
+                    status: "pending",
+                    estimatedTime: 120,
+                    tags: ["computer science", "algorithms", "data structures"]
+                }
+            ];
+            displayTasks();
+            updateTaskCount();
+        }
+
+        function clearTasks() {
+            tasks = [];
+            displayTasks();
+            updateTaskCount();
+        }
+
+        function handleSearch() {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                displayTasks();
+            }, 300);
+        }
+
+        function handleFilterChange() {
+            displayTasks();
+        }
+
+        function handleSortChange() {
+            currentSort = document.getElementById('sortTasks').value;
+            displayTasks();
+        }
+
+        function filterTasks(tasks) {
+            let filtered = [...tasks];
+            console.log('Starting filterTasks with', filtered.length, 'tasks');
+
+            // Search filter
+            const searchInput = document.getElementById('searchTasks');
+            if (searchInput && searchInput.value.trim()) {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                console.log('Searching for:', searchTerm);
+
+                filtered = filtered.filter(task => {
+                    const titleMatch = task.title && task.title.toLowerCase().includes(searchTerm);
+                    const descriptionMatch = task.description && task.description.toLowerCase().includes(searchTerm);
+                    const categoryMatch = task.category && task.category.toLowerCase().includes(searchTerm);
+                    const tagsMatch = task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    const priorityMatch = task.priority && task.priority.toLowerCase().includes(searchTerm);
+                    const statusMatch = task.status && task.status.toLowerCase().includes(searchTerm);
+
+                    return titleMatch || descriptionMatch || categoryMatch || tagsMatch || priorityMatch || statusMatch;
+                });
+
+                console.log('Search results:', filtered.length, 'out of', tasks.length);
+            }
+
+            // Priority filter
+            const priorityFilter = document.getElementById('priorityFilter');
+            if (priorityFilter && priorityFilter.value) {
+                filtered = filtered.filter(task => task.priority === priorityFilter.value);
+                console.log('Priority filtered to:', filtered.length);
+            }
+
+            // Status filter
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter && statusFilter.value) {
+                filtered = filtered.filter(task => task.status === statusFilter.value);
+                console.log('Status filtered to:', filtered.length);
+            }
+
+            // Category filter
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter && categoryFilter.value) {
+                filtered = filtered.filter(task => task.category === categoryFilter.value);
+                console.log('Category filtered to:', filtered.length);
+            }
+
+            return filtered;
+        }
+
+        function sortTasks(taskList) {
+            return taskList.sort((a, b) => {
+                switch (currentSort) {
+                    case 'deadline':
+                        return new Date(a.deadline) - new Date(b.deadline);
+                    case 'priority':
+                        const priorityOrder = { high: 0, medium: 1, low: 2 };
+                        return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+                    case 'title':
+                        return (a.title || '').localeCompare(b.title || '');
+                    case 'created':
+                        return (a.id || 0) - (b.id || 0);
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        function displayTasks() {
+            const container = document.getElementById('taskList');
+            let filteredTasks = filterTasks(tasks);
+            filteredTasks = sortTasks(filteredTasks);
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = '<p style="color: #a0aec0;">No tasks found</p>';
+                updateTaskCount(0);
+                return;
+            }
+
+            container.innerHTML = filteredTasks.map(task =>
+                `<div class="task-card">
+                    <strong>${task.title}</strong> 
+                    <span style="color: #a0aec0;">[${task.priority}] [${task.status}] [${task.category}]</span>
+                    <br><small>${task.description}</small>
+                    <br><small>Due: ${new Date(task.deadline).toLocaleDateString()}</small>
+                </div>`
+            ).join('');
+
+            updateTaskCount(filteredTasks.length);
+        }
+
+        function updateTaskCount(count = null) {
+            const total = count !== null ? count : tasks.length;
+            document.getElementById('taskCount').textContent = total;
+        }
+
+        function clearAllFilters() {
+            document.getElementById('searchTasks').value = '';
+            document.getElementById('priorityFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('sortTasks').value = 'deadline';
+            currentSort = 'deadline';
+            displayTasks();
+        }
+
+        // Initialize
+        addSampleTasks();
+    </script>
+</body>
+
+</html>

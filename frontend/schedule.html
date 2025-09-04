@@ -53,97 +53,87 @@
         }
 
         .nav-link {
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .nav-link:hover {
             background: rgba(99, 102, 241, 0.2);
-            color: #a5b4fc;
+            border-color: rgba(99, 102, 241, 0.3);
         }
 
-        /* Schedule grid improvements */
-        .schedule-entry,
-        .task-entry {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-            transition: all 0.2s ease;
-        }
-
-        .schedule-entry:hover,
-        .task-entry:hover {
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            transform: translateY(-1px);
-            z-index: 10;
-        }
-
-        .schedule-entry.expanded,
-        .task-entry.expanded {
-            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-            z-index: 15;
-        }
-
-        .multiple-entries-indicator,
-        .cell-toggle {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-            z-index: 20;
-        }
-
-        /* Ensure grid rows can expand */
         .schedule-grid-row {
-            min-height: 64px;
+            min-height: 80px;
         }
 
-        /* Smooth height transitions */
-        [data-day] {
-            transition: min-height 0.3s ease;
+        .schedule-grid-row:hover {
+            background: rgba(30, 41, 59, 0.3);
         }
 
-        .entries-container {
-            transition: max-height 0.3s ease, overflow 0.3s ease;
-        }
-
-        /* Line clamp utility for text truncation */
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        /* Collapsed state styling */
-        [data-day].collapsed .entries-container {
-            position: relative;
-        }
-
-        [data-day].collapsed .entries-container::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: linear-gradient(transparent, rgba(30, 41, 59, 0.8));
-            pointer-events: none;
-        }
-
-        /* Entry expand button styling */
-        .expand-btn {
-            transition: all 0.2s ease;
-        }
-
-        .expand-btn:hover {
-            transform: scale(1.1);
-        }
-
-        /* Cell toggle button styling */
-        .cell-toggle {
+        /* Task item styling */
+        .task-item {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
             backdrop-filter: blur(4px);
-            border: 1px solid rgba(51, 65, 85, 0.3);
         }
 
-        .cell-toggle:hover {
-            background: rgba(15, 23, 42, 0.9);
-            border-color: rgba(99, 102, 241, 0.4);
+        .task-item:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.5);
+        }
+
+        /* Priority colors */
+        .priority-high {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .priority-medium {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .priority-low {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        /* Custom scrollbar for dark theme */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+
+        .modal-backdrop {
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
     </style>
 </head>
@@ -183,32 +173,13 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="relative">
-                        <button id="notificationButton"
-                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                            <i class="fas fa-bell text-xl"></i>
-                            <span id="notificationBadge"
-                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                        </button>
-                        <!-- Notification Dropdown -->
-                        <div id="notificationDropdown"
-                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
-                            <div class="p-4 border-b border-dark-border">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="font-semibold text-white">Notifications</h3>
-                                    <button id="markAllReadBtn"
-                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
-                                </div>
-                            </div>
-                            <div id="notificationDropdownList" class="p-2">
-                                <div class="text-center text-gray-400 py-4">Loading...</div>
-                            </div>
-                        </div>
+                        <!-- Notification bell removed per user request -->
                     </div>
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
                                 class="w-8 h-8 rounded-full profile-image">
-                            <span class="hidden md:block user-name">User</span>
+                            <span class="hidden md:block user-name">Sudipto</span>
                             <i class="fas fa-chevron-down text-sm"></i>
                         </button>
                         <div
@@ -217,10 +188,7 @@
                                 class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                                 <i class="fas fa-user mr-2"></i>Profile Settings
                             </a>
-                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
-                                <i class="fas fa-cog mr-2"></i>Preferences
-                            </a>
-                            <hr class="border-dark-border">
+                            <hr class="border-dark-border mt-1">
                             <button id="logoutBtn"
                                 class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -232,50 +200,33 @@
         </div>
     </nav>
 
-    <!-- Mobile Navigation -->
-    <div class="md:hidden bg-dark-card border-b border-dark-border">
-        <div class="flex space-x-1 px-4 py-2 overflow-x-auto">
-            <a href="dashboard.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Dashboard</a>
-            <a href="tasks.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Tasks</a>
-            <a href="schedule.html"
-                class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">Schedule</a>
-            <a href="analytics.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Analytics</a>
-            <a href="pomodoro.html" class="text-gray-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap">Pomodoro</a>
-        </div>
-    </div>
-
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Schedule Header -->
+        <div class="flex items-center justify-between mb-8">
             <div>
-                <h1 class="text-3xl font-bold mb-2">Smart Schedule</h1>
-                <p class="text-gray-400">AI-powered scheduling for optimal productivity</p>
+                <h1
+                    class="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                    Schedule
+                </h1>
+                <p class="text-gray-400 mt-2">Manage your weekly schedule and deadlines</p>
             </div>
-        </div>
-
-        <!-- Schedule Controls -->
-        <div class="glass-effect rounded-xl p-6 dashboard-card mb-8">
-            <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                    <button id="prevWeek" class="text-gray-400 hover:text-white p-2">
+            <div class="flex items-center space-x-4">
+                <button id="exportSchedule"
+                    class="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                    <i class="fas fa-download mr-2"></i>
+                    Export
+                </button>
+                <div class="flex bg-dark-card rounded-lg p-1">
+                    <button id="prevWeek"
+                        class="px-4 py-2 text-gray-300 hover:text-white hover:bg-indigo-600 rounded-md transition-colors">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <h2 id="currentWeek" class="text-xl font-semibold">March 8 - 14, 2024</h2>
-                    <button id="nextWeek" class="text-gray-400 hover:text-white p-2">
+                    <span id="currentWeekDisplay" class="px-4 py-2 text-white font-medium whitespace-nowrap">September 2
+                        - 8, 2025</span>
+                    <button id="nextWeek"
+                        class="px-4 py-2 text-gray-300 hover:text-white hover:bg-indigo-600 rounded-md transition-colors">
                         <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="flex space-x-2">
-                        <button id="dayView"
-                            class="px-4 py-2 text-gray-400 hover:text-white rounded-lg transition-all">Day</button>
-                        <button id="weekView" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Week</button>
-                        <button id="monthView"
-                            class="px-4 py-2 text-gray-400 hover:text-white rounded-lg transition-all">Month</button>
-                    </div>
-                    <button class="text-gray-400 hover:text-white p-2">
-                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
@@ -289,37 +240,37 @@
                     <div class="p-4 text-center font-medium text-gray-400">Time</div>
                     <div class="p-4 text-center font-medium">
                         <div class="text-gray-300">Mon</div>
-                        <div class="text-sm text-gray-400">Mar 8</div>
+                        <div class="text-sm text-gray-400">Sep 2</div>
                     </div>
                     <div class="p-4 text-center font-medium">
                         <div class="text-gray-300">Tue</div>
-                        <div class="text-sm text-gray-400">Mar 9</div>
+                        <div class="text-sm text-gray-400">Sep 3</div>
                     </div>
                     <div class="p-4 text-center font-medium">
-                        <div class="text-gray-300">Wed</div>
-                        <div class="text-sm text-gray-400">Mar 10</div>
+                        <div class="text-indigo-400">Wed</div>
+                        <div class="text-sm text-indigo-400">Sep 4</div>
                     </div>
                     <div class="p-4 text-center font-medium">
                         <div class="text-gray-300">Thu</div>
-                        <div class="text-sm text-gray-400">Mar 11</div>
+                        <div class="text-sm text-gray-400">Sep 5</div>
                     </div>
                     <div class="p-4 text-center font-medium">
-                        <div class="text-indigo-400">Fri</div>
-                        <div class="text-sm text-indigo-400">Mar 12</div>
+                        <div class="text-gray-300">Fri</div>
+                        <div class="text-sm text-gray-400">Sep 6</div>
                     </div>
                     <div class="p-4 text-center font-medium">
                         <div class="text-gray-300">Sat</div>
-                        <div class="text-sm text-gray-400">Mar 13</div>
+                        <div class="text-sm text-gray-400">Sep 7</div>
                     </div>
                     <div class="p-4 text-center font-medium">
                         <div class="text-gray-300">Sun</div>
-                        <div class="text-sm text-gray-400">Mar 14</div>
+                        <div class="text-sm text-gray-400">Sep 8</div>
                     </div>
                 </div>
             </div>
 
             <!-- Calendar Body -->
-            <div class="divide-y divide-dark-border overflow-y-auto" style="max-height: 600px;">
+            <div class="divide-y divide-dark-border overflow-y-auto custom-scrollbar" style="max-height: 600px;">
                 <!-- Schedule rows will be dynamically generated by JavaScript -->
                 <div class="flex items-center justify-center py-12">
                     <div class="text-center text-gray-400">
@@ -330,48 +281,145 @@
             </div>
         </div>
 
-        <!-- Schedule Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div class="glass-effect rounded-xl p-6 dashboard-card">
-                <h3 class="font-semibold mb-4 flex items-center">
-                    <i class="fas fa-clock text-blue-400 mr-2"></i>
-                    Time Distribution
-                </h3>
-                <div id="timeDistribution" class="space-y-3">
-                    <div class="text-center text-gray-400 py-4">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Loading time distribution...</p>
-                    </div>
-                </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="taskDetailsModal"
+        class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden flex items-center justify-center z-50">
+        <div
+            class="modal-content bg-dark-card border border-dark-border rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-white">Task Details</h3>
+                <button id="closeTaskModal" class="text-gray-400 hover:text-gray-300 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
 
-            <div class="glass-effect rounded-xl p-6 dashboard-card">
-                <h3 class="font-semibold mb-4 flex items-center">
-                    <i class="fas fa-calendar-check text-green-400 mr-2"></i>
-                    This Week's Tasks
-                </h3>
-                <div id="weeklyTasks" class="space-y-3">
-                    <div class="text-center text-gray-400 py-4">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Loading tasks...</p>
+            <div class="space-y-4">
+                <div>
+                    <h4 id="modalTaskTitle" class="text-lg font-semibold text-white"></h4>
+                </div>
+
+                <div>
+                    <span class="text-sm font-medium text-gray-400">Description:</span>
+                    <p id="modalTaskDescription" class="text-gray-300 mt-1"></p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Priority:</span>
+                        <div id="modalTaskPriority" class="mt-1"></div>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Category:</span>
+                        <span id="modalTaskCategory" class="text-gray-300 ml-2"></span>
                     </div>
                 </div>
-            </div>
 
-            <div class="glass-effect rounded-xl p-6 dashboard-card">
-                <h3 class="font-semibold mb-4 flex items-center">
-                    <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
-                    Schedule Insights
-                </h3>
-                <div id="scheduleInsights" class="space-y-3 text-sm">
-                    <div class="text-center text-gray-400 py-4">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                        <p>Analyzing schedule...</p>
-                    </div>
+                <div>
+                    <span class="text-sm font-medium text-gray-400">Deadline:</span>
+                    <p id="modalTaskDeadline" class="text-gray-300 mt-1"></p>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Edit Schedule Modal -->
+    <div id="editScheduleModal"
+        class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop hidden flex items-center justify-center z-50">
+        <div
+            class="modal-content bg-dark-card border border-dark-border rounded-xl shadow-2xl max-w-md w-full mx-4 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold text-white">Edit Schedule Entry</h3>
+                <button id="closeEditScheduleModal" class="text-gray-400 hover:text-gray-300 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form id="editScheduleForm" class="space-y-4">
+                <div>
+                    <label for="editScheduleTitle" class="block text-sm font-medium text-gray-300 mb-1">Title *</label>
+                    <input type="text" id="editScheduleTitle" required
+                        class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label for="editScheduleDescription"
+                        class="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                    <textarea id="editScheduleDescription" rows="3"
+                        class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="editScheduleStartTime" class="block text-sm font-medium text-gray-300 mb-1">Start
+                            Time *</label>
+                        <input type="time" id="editScheduleStartTime" required
+                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="editScheduleEndTime" class="block text-sm font-medium text-gray-300 mb-1">End Time
+                            *</label>
+                        <input type="time" id="editScheduleEndTime" required
+                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="editScheduleDate" class="block text-sm font-medium text-gray-300 mb-1">Date *</label>
+                    <input type="date" id="editScheduleDate" required
+                        class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label for="editScheduleType" class="block text-sm font-medium text-gray-300 mb-1">Type</label>
+                    <select id="editScheduleType"
+                        class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="study">Study Session</option>
+                        <option value="class">Class</option>
+                        <option value="lab">Lab</option>
+                        <option value="meeting">Meeting</option>
+                        <option value="assignment">Assignment</option>
+                        <option value="project">Project</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </form>
+
+            <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-dark-border">
+                <button id="cancelEditSchedule" class="px-4 py-2 text-gray-400 hover:text-white transition-colors">
+                    Cancel
+                </button>
+                <button id="saveScheduleChanges"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark-card border-t border-dark-border mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                    <div
+                        class="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-brain text-white text-sm"></i>
+                    </div>
+                    <span
+                        class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        BrainyBalance
+                    </span>
+                </div>
+                <div class="flex items-center space-x-6 text-sm text-gray-400">
+                    <span>&copy; 2025 BrainyBalance. All rights reserved.</span>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script src="js/auth.js"></script>
     <script src="js/schedule.js"></script>

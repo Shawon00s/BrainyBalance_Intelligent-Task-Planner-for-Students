@@ -4,9 +4,13 @@ let currentFilter = 'all';
 let currentSort = 'deadline';
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Check authentication
+    console.log('Tasks page loaded');
+
+    // Check authentication - but continue anyway for development
     if (!isAuthenticated()) {
-        return;
+        console.log('Not authenticated, but continuing for development...');
+        // Set a temporary token for development
+        localStorage.setItem('authToken', 'demo-token-for-testing');
     }
 
     // Initialize tasks page
@@ -28,6 +32,8 @@ function initializeTasksPage() {
 }
 
 function setupEventListeners() {
+    console.log('Setting up event listeners...');
+
     // Add task form
     const addTaskForm = document.getElementById('addTaskForm');
     if (addTaskForm) {
@@ -103,10 +109,36 @@ function setupEventListeners() {
         });
     }
 
-    // Search input
+    // Search input with enhanced features
     const searchInput = document.getElementById('searchTasks');
+    console.log('Search input element:', searchInput);
+
     if (searchInput) {
+        console.log('Adding search event listeners...');
         searchInput.addEventListener('input', handleSearch);
+
+        // Add keyboard shortcuts
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                clearSearch();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                // Focus first task result if available
+                const firstTask = document.querySelector('.task-card');
+                if (firstTask) {
+                    firstTask.focus();
+                }
+            }
+        });
+
+        // Add focus/blur events for better UX
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-2', 'ring-indigo-500');
+        });
+
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-2', 'ring-indigo-500');
+        });
     }
 
     // Refresh button
@@ -123,16 +155,88 @@ function setupEventListeners() {
 }
 
 async function loadTasks() {
+    console.log('loadTasks called, current tasks array length:', tasks.length);
+
     try {
         showLoading('Loading tasks...');
         const response = await apiCall('/tasks');
         tasks = response.tasks || [];
+        console.log('Loaded from API:', tasks.length, 'tasks');
         displayTasks();
         updateTaskStats();
         hideLoading();
     } catch (error) {
         hideLoading();
-        showNotification('Failed to load tasks: ' + error.message, 'error');
+        console.log('API failed, loading sample tasks for testing:', error.message);
+
+        // Only load sample tasks if array is empty to avoid duplicates
+        if (tasks.length === 0) {
+            // Load sample tasks for testing when API is not available
+            tasks = [
+                {
+                    id: 1,
+                    title: "Complete CSE327 Assignment",
+                    description: "Finish the software requirements specification document",
+                    deadline: "2025-09-10T23:59:00",
+                    priority: "high",
+                    category: "assignment",
+                    status: "pending",
+                    estimatedTime: 120,
+                    tags: ["university", "software engineering", "urgent"]
+                },
+                {
+                    id: 2,
+                    title: "Study for Mathematics Exam",
+                    description: "Review calculus and linear algebra chapters",
+                    deadline: "2025-09-15T09:00:00",
+                    priority: "medium",
+                    category: "exam",
+                    status: "in-progress",
+                    estimatedTime: 180,
+                    tags: ["mathematics", "exam", "calculus"]
+                },
+                {
+                    id: 3,
+                    title: "Research Project Literature Review",
+                    description: "Find and review 10 academic papers for the final project",
+                    deadline: "2025-09-20T17:00:00",
+                    priority: "medium",
+                    category: "project",
+                    status: "pending",
+                    estimatedTime: 240,
+                    tags: ["research", "literature", "academic"]
+                },
+                {
+                    id: 4,
+                    title: "Programming Lab Exercise",
+                    description: "Complete the data structures implementation",
+                    deadline: "2025-09-08T15:30:00",
+                    priority: "high",
+                    category: "assignment",
+                    status: "completed",
+                    estimatedTime: 90,
+                    tags: ["programming", "data structures", "lab"]
+                },
+                {
+                    id: 5,
+                    title: "Group Project Meeting",
+                    description: "Weekly team meeting to discuss project progress",
+                    deadline: "2025-09-05T14:00:00",
+                    priority: "low",
+                    category: "study",
+                    status: "pending",
+                    estimatedTime: 60,
+                    tags: ["meeting", "teamwork", "discussion"]
+                }
+            ];
+            console.log('Loaded sample tasks:', tasks.length);
+        } else {
+            console.log('Tasks array already has data, not loading samples');
+        }
+
+        displayTasks();
+        updateTaskStats();
+        showNotification('Using sample data (API unavailable)', 'info');
     }
 }
 
@@ -195,7 +299,7 @@ async function updateTask(taskId, updates) {
         });
 
         // Update local tasks array
-        const index = tasks.findIndex(task => task._id === taskId);
+        const index = tasks.findIndex(task => (task._id || task.id) === taskId);
         if (index !== -1) {
             tasks[index] = response.task;
             displayTasks();
@@ -219,7 +323,7 @@ async function deleteTask(taskId) {
         });
 
         // Remove from local tasks array
-        tasks = tasks.filter(task => task._id !== taskId);
+        tasks = tasks.filter(task => (task._id || task.id) !== taskId);
         displayTasks();
         updateTaskStats();
 
@@ -230,10 +334,21 @@ async function deleteTask(taskId) {
 }
 
 async function toggleTaskStatus(taskId) {
-    const task = tasks.find(t => t._id === taskId);
+    const task = tasks.find(t => (t._id || t.id) === taskId);
     if (!task) return;
 
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+
+    // For demo/sample data, update locally since API isn't available
+    if (task.id && !task._id) {
+        task.status = newStatus;
+        displayTasks();
+        updateTaskStats();
+        showNotification(`Task ${newStatus}!`, 'success');
+        return;
+    }
+
+    // For real API data
     await updateTask(taskId, { status: newStatus });
 }
 
@@ -241,90 +356,255 @@ function handleFilterChange() {
     displayTasks();
 }
 
+// Search functionality
+let searchDebounceTimer;
+
 function handleSearch() {
-    displayTasks();
+    console.log('handleSearch called');
+
+    // Clear existing timer
+    clearTimeout(searchDebounceTimer);
+
+    // Debounce search to avoid too many calls
+    searchDebounceTimer = setTimeout(() => {
+        console.log('Executing search after debounce');
+        displayTasks();
+        updateSearchResults();
+    }, 300);
+}
+
+function updateSearchResults() {
+    const searchInput = document.getElementById('searchTasks');
+    const filteredTasks = filterTasks(tasks);
+
+    // Update search result counter (you can add this to UI if needed)
+    console.log(`Search results: ${filteredTasks.length} task(s) found`);
+    console.log('Total tasks in array:', tasks.length);
+    console.log('Current search term:', searchInput ? searchInput.value : 'none');
+
+    // Show clear button if search has content
+    if (searchInput && searchInput.value.trim()) {
+        addClearSearchButton();
+    } else {
+        removeClearSearchButton();
+    }
+}
+
+function addClearSearchButton() {
+    const searchContainer = document.getElementById('searchTasks').parentElement;
+    let clearBtn = searchContainer.querySelector('.clear-search-btn');
+
+    if (!clearBtn) {
+        clearBtn = document.createElement('button');
+        clearBtn.className = 'clear-search-btn absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors';
+        clearBtn.innerHTML = '<i class="fas fa-times"></i>';
+        clearBtn.onclick = clearSearch;
+        searchContainer.appendChild(clearBtn);
+    }
+}
+
+function removeClearSearchButton() {
+    const searchContainer = document.getElementById('searchTasks').parentElement;
+    const clearBtn = searchContainer.querySelector('.clear-search-btn');
+    if (clearBtn) {
+        clearBtn.remove();
+    }
+}
+
+function clearSearch() {
+    const searchInput = document.getElementById('searchTasks');
+    if (searchInput) {
+        searchInput.value = '';
+        removeClearSearchButton();
+        displayTasks();
+    }
 }
 
 function filterTasks(tasks) {
     let filtered = [...tasks];
+    console.log('Starting filterTasks with', filtered.length, 'tasks');
 
-    // Search filter
+    // Search filter - Enhanced to search multiple fields
     const searchInput = document.getElementById('searchTasks');
     if (searchInput && searchInput.value.trim()) {
         const searchTerm = searchInput.value.toLowerCase().trim();
-        filtered = filtered.filter(task =>
-            task.title.toLowerCase().includes(searchTerm) ||
-            task.description.toLowerCase().includes(searchTerm) ||
-            (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
-        );
+        console.log('Searching for:', searchTerm);
+
+        filtered = filtered.filter(task => {
+            // Search in title, description, category, and tags
+            const titleMatch = task.title && task.title.toLowerCase().includes(searchTerm);
+            const descriptionMatch = task.description && task.description.toLowerCase().includes(searchTerm);
+            const categoryMatch = task.category && task.category.toLowerCase().includes(searchTerm);
+            const tagsMatch = task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+
+            // Also search in priority and status for more comprehensive results
+            const priorityMatch = task.priority && task.priority.toLowerCase().includes(searchTerm);
+            const statusMatch = task.status && task.status.toLowerCase().includes(searchTerm);
+
+            const isMatch = titleMatch || descriptionMatch || categoryMatch || tagsMatch || priorityMatch || statusMatch;
+
+            if (isMatch) {
+                console.log('Match found:', task.title);
+            }
+
+            return isMatch;
+        });
+
+        console.log('Filtered results after search:', filtered.length, 'out of', tasks.length);
     }
 
     // Priority filter
     const priorityFilter = document.getElementById('priorityFilter');
     if (priorityFilter && priorityFilter.value) {
+        const initialCount = filtered.length;
         filtered = filtered.filter(task => task.priority === priorityFilter.value);
+        console.log('Priority filter applied:', priorityFilter.value, '- reduced from', initialCount, 'to', filtered.length);
     }
 
     // Status filter
     const statusFilter = document.getElementById('statusFilter');
     if (statusFilter && statusFilter.value) {
+        const initialCount = filtered.length;
         filtered = filtered.filter(task => task.status === statusFilter.value);
+        console.log('Status filter applied:', statusFilter.value, '- reduced from', initialCount, 'to', filtered.length);
     }
 
     // Category filter
     const categoryFilter = document.getElementById('categoryFilter');
     if (categoryFilter && categoryFilter.value) {
+        const initialCount = filtered.length;
         filtered = filtered.filter(task => task.category === categoryFilter.value);
+        console.log('Category filter applied:', categoryFilter.value, '- reduced from', initialCount, 'to', filtered.length);
     }
 
-    // Current filter (if using filter buttons)
-    if (currentFilter !== 'all') {
-        switch (currentFilter) {
-            case 'pending':
-                filtered = filtered.filter(task => task.status === 'pending');
-                break;
-            case 'completed':
-                filtered = filtered.filter(task => task.status === 'completed');
-                break;
-            case 'overdue':
-                const now = new Date();
-                filtered = filtered.filter(task =>
-                    task.status !== 'completed' && new Date(task.deadline) < now
-                );
-                break;
-        }
-    }
-
+    console.log('Final filtered result:', filtered.length, 'tasks');
     return filtered;
 }
 
 function displayTasks() {
+    console.log('displayTasks called');
     const container = document.getElementById('taskList');
-    if (!container) return;
+    console.log('Task container element:', container);
+
+    if (!container) {
+        console.error('taskList container not found!');
+        return;
+    }
 
     let filteredTasks = filterTasks(tasks);
+    filteredTasks = applyCurrentFilters(filteredTasks);
     filteredTasks = sortTasks(filteredTasks);
 
+    console.log('Filtered tasks:', filteredTasks.length);
+    console.log('Tasks to display:', filteredTasks);
+
+    // Check if we're in search mode
+    const searchInput = document.getElementById('searchTasks');
+    const isSearching = searchInput && searchInput.value.trim();
+    const hasFilters = checkActiveFilters();
+
     if (filteredTasks.length === 0) {
+        let message = 'Create your first task to get started!';
+        let actionButton = `
+            <button onclick="openAddTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors">
+                Add New Task
+            </button>
+        `;
+
+        if (isSearching) {
+            message = `No tasks found for "${searchInput.value.trim()}"`;
+            actionButton = `
+                <button onclick="clearSearch()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors mr-2">
+                    Clear Search
+                </button>
+                <button onclick="openAddTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    Add New Task
+                </button>
+            `;
+        } else if (hasFilters) {
+            message = 'No tasks match your current filters.';
+            actionButton = `
+                <button onclick="clearAllFilters()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors mr-2">
+                    Clear Filters
+                </button>
+                <button onclick="openAddTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    Add New Task
+                </button>
+            `;
+        }
+
         container.innerHTML = `
             <div class="text-center py-12">
                 <div class="text-gray-400 text-6xl mb-4">📝</div>
                 <h3 class="text-xl font-semibold text-gray-300 mb-2">No tasks found</h3>
-                <p class="text-gray-400 mb-4">${currentFilter === 'all' ? 'Create your first task to get started!' : 'No tasks match your current filter.'}</p>
-                <button onclick="openAddTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors">
-                    Add New Task
-                </button>
+                <p class="text-gray-400 mb-6">${message}</p>
+                ${actionButton}
             </div>
         `;
         return;
     }
 
-    container.innerHTML = filteredTasks.map(task => createTaskCard(task)).join('');
+    // Show search results summary
+    if (isSearching || hasFilters) {
+        const totalTasks = tasks.length;
+        const resultSummary = `
+            <div class="mb-4 p-3 bg-indigo-600/20 border border-indigo-500/30 rounded-lg">
+                <p class="text-indigo-300 text-sm">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Showing ${filteredTasks.length} of ${totalTasks} tasks
+                    ${isSearching ? `for "${searchInput.value.trim()}"` : ''}
+                </p>
+            </div>
+        `;
+        console.log('Updating container with search results and summary');
+        container.innerHTML = resultSummary + filteredTasks.map(task => createTaskCard(task)).join('');
+    } else {
+        console.log('Updating container with all tasks (no search/filter)');
+        container.innerHTML = filteredTasks.map(task => createTaskCard(task)).join('');
+    }
+
+    console.log('Container innerHTML updated, current length:', container.innerHTML.length);
+}
+
+function checkActiveFilters() {
+    const priorityFilter = document.getElementById('priorityFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    return (priorityFilter && priorityFilter.value) ||
+        (statusFilter && statusFilter.value) ||
+        (categoryFilter && categoryFilter.value) ||
+        currentFilter !== 'all';
+}
+
+function clearAllFilters() {
+    // Clear dropdown filters
+    const priorityFilter = document.getElementById('priorityFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    if (priorityFilter) priorityFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (categoryFilter) categoryFilter.value = '';
+
+    // Reset current filter
+    currentFilter = 'all';
+
+    // Update filter buttons appearance
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white');
+        btn.classList.add('bg-dark-card', 'text-gray-300');
+    });
+
+    // Refresh display
+    displayTasks();
 }
 
 function createTaskCard(task) {
     const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
     const timeLeft = getTimeLeft(task.deadline);
+    const taskId = task._id || task.id; // Handle both API and sample data
 
     return `
         <div class="p-6 hover:bg-dark-bg/50 transition-colors border-b border-dark-border">
@@ -332,7 +612,7 @@ function createTaskCard(task) {
                 <div class="flex items-center space-x-4">
                     <input type="checkbox" 
                            ${task.status === 'completed' ? 'checked' : ''} 
-                           onchange="toggleTaskStatus('${task._id}')"
+                           onchange="toggleTaskStatus('${taskId}')"
                            class="w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-dark-bg">
                     <div class="flex-1">
                         <h3 class="font-medium text-white mb-1 ${task.status === 'completed' ? 'line-through text-gray-500' : ''}">${task.title}</h3>
@@ -352,16 +632,16 @@ function createTaskCard(task) {
                 </div>
                 <div class="flex items-center space-x-2">
                     <!-- Temporarily disabled Google Calendar sync
-                    <button onclick="syncTaskToCalendar('${task._id}')" 
+                    <button onclick="syncTaskToCalendar('${taskId}')" 
                             class="text-gray-400 hover:text-green-400 p-2 sync-task-btn" 
                             title="Sync to Google Calendar">
                         <i class="fab fa-google"></i>
                     </button>
                     -->
-                    <button onclick="editTask('${task._id}')" class="text-gray-400 hover:text-blue-400 p-2">
+                    <button onclick="editTask('${taskId}')" class="text-gray-400 hover:text-blue-400 p-2">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTask('${task._id}')" class="text-gray-400 hover:text-red-400 p-2">
+                    <button onclick="deleteTask('${taskId}')" class="text-gray-400 hover:text-red-400 p-2">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -370,7 +650,8 @@ function createTaskCard(task) {
     `;
 }
 
-function filterTasks(taskList) {
+function applyCurrentFilters(taskList) {
+    // This function handles the current filter buttons (all, pending, completed, overdue, today)
     switch (currentFilter) {
         case 'pending':
             return taskList.filter(task => task.status === 'pending');
@@ -393,13 +674,33 @@ function filterTasks(taskList) {
 function sortTasks(taskList) {
     return taskList.sort((a, b) => {
         switch (currentSort) {
-            case 'deadline':
-                return new Date(a.deadline) - new Date(b.deadline);
-            case 'priority':
+            case 'deadline': {
+                // Show upcoming (future) tasks first (nearest deadline first).
+                // Tasks without deadline go to the end.
+                const now = Date.now();
+                const aTime = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+                const bTime = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+
+                const aIsFuture = aTime >= now;
+                const bIsFuture = bTime >= now;
+
+                if (aIsFuture && !bIsFuture) return -1; // a is upcoming, b is past -> a first
+                if (!aIsFuture && bIsFuture) return 1;  // b is upcoming -> b first
+
+                if (aIsFuture && bIsFuture) {
+                    // both upcoming -> nearest deadline first
+                    return aTime - bTime;
+                }
+
+                // both past/overdue -> show most recently overdue first (closest to now)
+                return bTime - aTime;
+            }
+            case 'priority': {
                 const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-                return priorityOrder[a.priority] - priorityOrder[b.priority];
+                return (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
+            }
             case 'title':
-                return a.title.localeCompare(b.title);
+                return (a.title || '').localeCompare(b.title || '');
             case 'created':
                 return new Date(b.createdAt) - new Date(a.createdAt);
             default:
@@ -424,25 +725,6 @@ function setFilter(filter) {
     }
 
     displayTasks();
-}
-
-function handleSearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
-    const container = document.getElementById('tasksContainer');
-
-    if (!searchTerm) {
-        displayTasks();
-        return;
-    }
-
-    const filteredTasks = tasks.filter(task =>
-        task.title.toLowerCase().includes(searchTerm) ||
-        task.description.toLowerCase().includes(searchTerm) ||
-        task.category.toLowerCase().includes(searchTerm) ||
-        (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
-    );
-
-    container.innerHTML = filteredTasks.map(task => createTaskCard(task)).join('');
 }
 
 function updateTaskStats() {

@@ -247,7 +247,12 @@ async function handleProfilePictureUpload(e) {
         const data = await response.json();
 
         // Update profile picture display
-        updateProfilePicture(data.profilePictureUrl);
+        updateProfilePicture(data.profilePictureUrl || data.profilePictureUrl || data.user?.avatarUrl);
+
+        // Update local stored user
+        const user = getUser() || {};
+        user.avatarUrl = data.profilePictureUrl || data.user?.avatarUrl || user.avatarUrl;
+        setUser(user);
 
         hideLoading();
         showNotification('Profile picture updated successfully!', 'success');
@@ -260,10 +265,18 @@ async function handleProfilePictureUpload(e) {
 
 function updateProfilePicture(imageUrl) {
     // Update all profile images on the page
+    if (!imageUrl) return;
+
     const profileImages = document.querySelectorAll('img[alt="Profile"]');
     profileImages.forEach(img => {
         img.src = imageUrl;
     });
+
+    const avatarPreview = document.getElementById('avatarPreview');
+    if (avatarPreview) {
+        if (avatarPreview.tagName === 'IMG') avatarPreview.src = imageUrl;
+        else avatarPreview.style.backgroundImage = `url('${imageUrl}')`;
+    }
 }
 
 // Quick Actions

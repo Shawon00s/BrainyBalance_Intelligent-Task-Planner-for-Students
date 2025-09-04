@@ -4,8 +4,22 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { generateOtp, hashOtp, sendOtpEmail, verifyOtpHash } from '../services/otpService.js';
+import multer from 'multer';
+import cloudinary from 'cloudinary';
+import streamifier from 'streamifier';
 
 const router = express.Router();
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Multer setup (store in memory)
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Register user
 router.post("/register", async (req, res) => {
@@ -279,7 +293,8 @@ router.get("/me", authMiddleware, async (req, res) => {
                 name: req.user.name,
                 email: req.user.email,
                 role: req.user.role,
-                lastLogin: req.user.lastLogin
+                lastLogin: req.user.lastLogin,
+                avatarUrl: req.user.avatarUrl || ''
             }
         });
     } catch (error) {
@@ -299,7 +314,8 @@ router.get("/profile", authMiddleware, async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                lastLogin: user.lastLogin
+                lastLogin: user.lastLogin,
+                avatarUrl: user.avatarUrl || ''
             }
         });
     } catch (error) {
@@ -336,6 +352,36 @@ router.put("/profile", authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Profile update error:', error);
         res.status(500).json({ error: 'Server error during profile update' });
+    }
+});
+
+// Upload profile picture
+router.post('/profile-picture', authMiddleware, upload.single('profilePicture'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Upload buffer to Cloudinary using stream
+        const streamUpload = (buffer) => {
+            return new Promise((resolve, reject) => {
+                const stream = cloudinary.uploader.upload_stream({ folder: 'brainybalance/avatars', resource_type: 'image' }, (error, result) => {
+                    if (result) resolve(result);
+                    else reject(error);
+                });
+                streamifier.createReadStream(buffer).pipe(stream);
+            });
+        };
+
+        const result = await streamUpload(req.file.buffer);
+
+        // Save avatar URL to user
+        const user = await User.findByIdAndUpdate(req.user._id, { avatarUrl: result.secure_url }, { new: true, select: '-password' });
+
+        res.json({ message: 'Profile picture uploaded', profilePictureUrl: result.secure_url, user: { id: user._id, avatarUrl: user.avatarUrl } });
+    } catch (error) {
+        console.error('Profile picture upload error:', error);
+        res.status(500).json({ error: 'Failed to upload profile picture' });
     }
 });
 

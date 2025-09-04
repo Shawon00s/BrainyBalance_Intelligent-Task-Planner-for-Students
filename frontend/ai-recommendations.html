@@ -122,32 +122,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button id="generateRecommendations"
-                        class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all">
-                        <i class="fas fa-magic mr-2"></i>Generate AI Recommendations
-                    </button>
-                    <div class="relative">
-                        <button id="notificationButton"
-                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                            <i class="fas fa-bell text-xl"></i>
-                            <span id="notificationBadge"
-                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                        </button>
-                        <!-- Notification Dropdown -->
-                        <div id="notificationDropdown"
-                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
-                            <div class="p-4 border-b border-dark-border">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="font-semibold text-white">Notifications</h3>
-                                    <button id="markAllReadBtn"
-                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
-                                </div>
-                            </div>
-                            <div id="notificationDropdownList" class="p-2">
-                                <div class="text-center text-gray-400 py-4">Loading...</div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Generate button moved into page header -->
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
@@ -161,10 +136,7 @@
                                 class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                                 <i class="fas fa-user mr-2"></i>Profile Settings
                             </a>
-                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
-                                <i class="fas fa-cog mr-2"></i>Preferences
-                            </a>
-                            <hr class="border-dark-border">
+                            <hr class="border-dark-border mt-1">
                             <button id="logoutBtn"
                                 class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -223,6 +195,10 @@
                         <option value="medium">Medium</option>
                         <option value="low">Low</option>
                     </select>
+                    <button id="generateRecommendations"
+                        class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-lg transition-all">
+                        <i class="fas fa-magic mr-2"></i>Generate AI Recommendations
+                    </button>
                 </div>
             </div>
         </div>
@@ -334,6 +310,29 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark-surface border-t border-dark-border mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                    <div
+                        class="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-brain text-white text-sm"></i>
+                    </div>
+                    <span
+                        class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        BrainyBalance
+                    </span>
+                </div>
+                <div class="flex items-center space-x-6 text-sm text-gray-400">
+                    <span>&copy; 2025 BrainyBalance. All rights reserved.</span>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Scripts -->
     <script src="js/auth.js"></script>

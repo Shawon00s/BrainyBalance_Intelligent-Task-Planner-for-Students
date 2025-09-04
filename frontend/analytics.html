@@ -105,28 +105,7 @@
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <button id="notificationButton"
-                            class="relative text-gray-300 hover:text-indigo-400 transition-colors">
-                            <i class="fas fa-bell text-xl"></i>
-                            <span id="notificationBadge"
-                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
-                        </button>
-                        <!-- Notification Dropdown -->
-                        <div id="notificationDropdown"
-                            class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-lg shadow-xl opacity-0 invisible transition-all z-50 max-h-96 overflow-y-auto">
-                            <div class="p-4 border-b border-dark-border">
-                                <div class="flex items-center justify-between">
-                                    <h3 class="font-semibold text-white">Notifications</h3>
-                                    <button id="markAllReadBtn"
-                                        class="text-xs text-indigo-400 hover:text-indigo-300">Mark all read</button>
-                                </div>
-                            </div>
-                            <div id="notificationDropdownList" class="p-2">
-                                <div class="text-center text-gray-400 py-4">Loading...</div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Notification bell removed per user request -->
                     <div class="relative group">
                         <button class="flex items-center space-x-2 text-gray-300 hover:text-white">
                             <img src="https://via.placeholder.com/32x32/6366f1/ffffff?text=U" alt="Profile"
@@ -140,10 +119,7 @@
                                 class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                                 <i class="fas fa-user mr-2"></i>Profile Settings
                             </a>
-                            <a href="#" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
-                                <i class="fas fa-cog mr-2"></i>Preferences
-                            </a>
-                            <hr class="border-dark-border">
+                            <hr class="border-dark-border mt-1">
                             <button id="logoutBtn"
                                 class="block w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -167,534 +143,100 @@
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 lg:px-6 py-8">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
+    <!-- Main Content (cleaned & simplified) -->
+    <div class="max-w-6xl mx-auto px-4 lg:px-6 py-8">
+        <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold mb-2 flex items-center">
+                <h1 class="text-3xl font-bold mb-1 flex items-center">
                     <i class="fas fa-chart-line text-purple-400 mr-3"></i>
-                    Analytics Dashboard
+                    Analytics
                 </h1>
-                <p class="text-gray-400">Track your productivity and study performance</p>
+                <p class="text-gray-400">Database-driven analytics (no placeholders)</p>
             </div>
-            <div class="flex space-x-4 mt-4 md:mt-0">
-                <select class="glass-effect border border-dark-border rounded-lg px-4 py-2 text-white"
-                    id="analyticsPeriodSelector">
+            <div class="flex items-center space-x-3">
+                <select id="analyticsPeriodSelector"
+                    class="glass-effect border border-dark-border rounded-lg px-3 py-2 text-white">
                     <option value="7">Last 7 days</option>
                     <option value="30">Last 30 days</option>
-                    <option value="90">Last 3 months</option>
-                    <option value="365">This year</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last 365 days</option>
                 </select>
-                <button
-                    class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-6 py-2 rounded-lg font-medium transition-all flex items-center"
-                    id="exportReportBtn">
-                    <i class="fas fa-download mr-2"></i>
-                    Export Report
-                </button>
+                <button id="exportReportBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Export</button>
             </div>
         </div>
 
-        <!-- Key Metrics -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-400 text-sm">Total Study Hours</p>
-                        <p class="text-2xl font-bold text-blue-400" id="totalStudyHours">Loading...</p>
-                        <p class="text-gray-400 text-sm mt-1" id="studyHoursTrend">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                            Calculating...
-                        </p>
-                    </div>
-                    <div class="bg-blue-500/20 p-3 rounded-lg">
-                        <i class="fas fa-clock text-blue-400 text-xl"></i>
-                    </div>
-                </div>
+        <!-- Top metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-effect rounded-lg p-4">
+                <p class="text-sm text-gray-400">Total Study Hours</p>
+                <p id="totalStudyHours" class="text-2xl font-semibold text-white">—</p>
             </div>
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-400 text-sm">Tasks Completed</p>
-                        <p class="text-2xl font-bold text-green-400" id="tasksCompleted">Loading...</p>
-                        <p class="text-gray-400 text-sm mt-1" id="tasksCompletedTrend">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                            Calculating...
-                        </p>
-                    </div>
-                    <div class="bg-green-500/20 p-3 rounded-lg">
-                        <i class="fas fa-check-circle text-green-400 text-xl"></i>
-                    </div>
-                </div>
+            <div class="glass-effect rounded-lg p-4">
+                <p class="text-sm text-gray-400">Tasks Completed</p>
+                <p id="tasksCompleted" class="text-2xl font-semibold text-white">—</p>
             </div>
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-400 text-sm">Average Grade</p>
-                        <p class="text-2xl font-bold text-purple-400" id="averageGrade">Loading...</p>
-                        <p class="text-gray-400 text-sm mt-1" id="averageGradeTrend">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                            Calculating...
-                        </p>
-                    </div>
-                    <div class="bg-purple-500/20 p-3 rounded-lg">
-                        <i class="fas fa-graduation-cap text-purple-400 text-xl"></i>
-                    </div>
-                </div>
+            <div class="glass-effect rounded-lg p-4">
+                <p class="text-sm text-gray-400">Focus Sessions</p>
+                <p id="focusSessions" class="text-2xl font-semibold text-white">—</p>
             </div>
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-400 text-sm">Productivity Score</p>
-                        <p class="text-2xl font-bold text-yellow-400" id="productivityScore">Loading...</p>
-                        <p class="text-gray-400 text-sm mt-1" id="productivityTrend">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                            Calculating...
-                        </p>
-                    </div>
-                    <div class="bg-yellow-500/20 p-3 rounded-lg">
-                        <i class="fas fa-chart-line text-yellow-400 text-xl"></i>
-                    </div>
-                </div>
+            <div class="glass-effect rounded-lg p-4">
+                <p class="text-sm text-gray-400">Productivity Score</p>
+                <p id="productivityScore" class="text-2xl font-semibold text-white">—</p>
             </div>
         </div>
 
-        <!-- Primary Charts Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Daily Study Hours Trend -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-chart-line text-cyan-400 mr-2"></i>
-                        Daily Study Hours
-                    </h2>
-                    <div class="flex space-x-2">
-                        <button class="text-gray-400 hover:text-white" onclick="refreshChart('dailyStudyChart')">
-                            <i class="fas fa-refresh"></i>
-                        </button>
-                        <button class="text-gray-400 hover:text-white">
-                            <i class="fas fa-expand-alt"></i>
-                        </button>
-                    </div>
-                </div>
+        <!-- Charts and lists -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-effect rounded-lg p-4 lg:col-span-2">
+                <p class="text-sm text-gray-400 mb-2">Daily Study Hours</p>
                 <div class="h-64">
                     <canvas id="dailyStudyChart"></canvas>
                 </div>
-                <div class="mt-4 text-center">
-                    <div class="text-sm text-gray-400">
-                        <span id="dailyAverage">Loading...</span> average daily hours
-                    </div>
-                </div>
             </div>
 
-            <!-- Weekly Progress Chart -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-calendar-week text-emerald-400 mr-2"></i>
-                        Weekly Progress
-                    </h2>
-                    <div class="flex space-x-2">
-                        <button class="text-gray-400 hover:text-white" onclick="refreshChart('weeklyProgressChart')">
-                            <i class="fas fa-refresh"></i>
-                        </button>
-                        <button class="text-gray-400 hover:text-white">
-                            <i class="fas fa-expand-alt"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="h-64">
-                    <canvas id="weeklyProgressChart"></canvas>
-                </div>
-                <div class="mt-4 flex justify-between items-center text-sm">
-                    <div class="text-center">
-                        <div class="text-emerald-400 font-semibold" id="weeklyCompletion">Loading...</div>
-                        <div class="text-gray-400">completion rate</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-white font-semibold" id="avgWeeklyTasks">Loading...</div>
-                        <div class="text-gray-400">avg weekly tasks</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Task Category Distribution -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            <!-- Task Type Distribution (Exam, Assignment, Project) -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-pie-chart text-pink-400 mr-2"></i>
-                        Task Type Coverage
-                    </h2>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('taskTypeChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-                <div class="h-64">
-                    <canvas id="taskTypeChart"></canvas>
-                </div>
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <span class="text-gray-400">Exams</span>
-                        </div>
-                        <span class="text-white font-medium" id="examCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span class="text-gray-400">Assignments</span>
-                        </div>
-                        <span class="text-white font-medium" id="assignmentCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="text-gray-400">Projects</span>
-                        </div>
-                        <span class="text-white font-medium" id="projectCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="text-gray-400">Personal</span>
-                        </div>
-                        <span class="text-white font-medium" id="personalCount">Loading...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Priority Distribution -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-exclamation-triangle text-orange-400 mr-2"></i>
-                        Task Priority
-                    </h2>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('priorityChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-                <div class="h-64">
-                    <canvas id="priorityChart"></canvas>
-                </div>
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-red-600 rounded-full"></div>
-                            <span class="text-gray-400">Urgent</span>
-                        </div>
-                        <span class="text-white font-medium" id="urgentCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-orange-500 rounded-full"></div>
-                            <span class="text-gray-400">High</span>
-                        </div>
-                        <span class="text-white font-medium" id="highCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="text-gray-400">Medium</span>
-                        </div>
-                        <span class="text-white font-medium" id="mediumCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="text-gray-400">Low</span>
-                        </div>
-                        <span class="text-white font-medium" id="lowCount">Loading...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Task Status Overview -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-tasks text-blue-400 mr-2"></i>
-                        Task Status
-                    </h2>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('statusChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-                <div class="h-64">
+            <div class="glass-effect rounded-lg p-4">
+                <p class="text-sm text-gray-400 mb-2">Task Status</p>
+                <div class="h-48">
                     <canvas id="statusChart"></canvas>
                 </div>
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="text-gray-400">Completed</span>
-                        </div>
-                        <span class="text-white font-medium" id="completedCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span class="text-gray-400">In Progress</span>
-                        </div>
-                        <span class="text-white font-medium" id="inProgressCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="text-gray-400">Pending</span>
-                        </div>
-                        <span class="text-white font-medium" id="pendingCount">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                            <span class="text-gray-400">Overdue</span>
-                        </div>
-                        <span class="text-white font-medium" id="overdueCount">Loading...</span>
-                    </div>
+                <div class="mt-4">
+                    <p class="text-sm text-gray-400">Recent Activity</p>
+                    <div id="recentActivityFeed" class="mt-2 space-y-2"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Time Usage Analysis -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Daily Time Usage Breakdown -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-clock text-indigo-400 mr-2"></i>
-                        Time Usage Trends
-                    </h2>
-                    <div class="flex items-center space-x-2">
-                        <select id="timeUsagePeriod"
-                            class="bg-dark-surface border border-dark-border rounded-lg px-3 py-1 text-sm text-white">
-                            <option value="today">Today</option>
-                            <option value="week">This Week</option>
-                            <option value="month">This Month</option>
-                        </select>
-                        <button class="text-gray-400 hover:text-white" onclick="refreshChart('timeUsageChart')">
-                            <i class="fas fa-refresh"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="h-64">
-                    <canvas id="timeUsageChart"></canvas>
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-4 text-sm">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span class="text-gray-400">Study Time</span>
-                        </div>
-                        <span class="text-white font-medium" id="studyTimeValue">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span class="text-gray-400">Task Work</span>
-                        </div>
-                        <span class="text-white font-medium" id="taskTimeValue">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <span class="text-gray-400">Break Time</span>
-                        </div>
-                        <span class="text-white font-medium" id="breakTimeValue">Loading...</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
-                            <span class="text-gray-400">Focus Sessions</span>
-                        </div>
-                        <span class="text-white font-medium" id="focusTimeValue">Loading...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Subject Performance Analysis -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-book text-teal-400 mr-2"></i>
-                        Subject Performance
-                    </h2>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('subjectChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-                <div class="h-64">
-                    <canvas id="subjectChart"></canvas>
-                </div>
-                <div class="mt-4 text-center">
-                    <div class="text-sm text-gray-400">
-                        Best performing: <span id="bestSubject" class="text-green-400 font-medium">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Productivity Analytics -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <!-- Productivity Score Trend -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-chart-area text-emerald-400 mr-2"></i>
-                        Productivity Trends
-                    </h2>
-                    <div class="flex items-center space-x-2">
-                        <select id="productivityMetric"
-                            class="bg-dark-surface border border-dark-border rounded-lg px-3 py-1 text-sm text-white">
-                            <option value="overall">Overall Score</option>
-                            <option value="tasks">Task Completion</option>
-                            <option value="hours">Study Hours</option>
-                            <option value="efficiency">Efficiency</option>
-                        </select>
-                        <button class="text-gray-400 hover:text-white" onclick="refreshChart('productivityChart')">
-                            <i class="fas fa-refresh"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="h-64">
-                    <canvas id="productivityChart"></canvas>
-                </div>
-                <div class="mt-4 flex justify-between items-center text-sm">
-                    <div class="text-center">
-                        <div class="text-emerald-400 font-semibold" id="productivityChange">Loading...</div>
-                        <div class="text-gray-400">vs last period</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-white font-semibold" id="productivityAverage">Loading...</div>
-                        <div class="text-gray-400">average score</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Focus Session Analytics -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-brain text-pink-400 mr-2"></i>
-                        Focus Session Analytics
-                    </h2>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('focusChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-                <div class="h-64">
-                    <canvas id="focusChart"></canvas>
-                </div>
-                <div class="mt-4 space-y-2 text-sm">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400">Total Sessions</span>
-                        <span class="text-white font-medium" id="totalSessions">Loading...</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400">Average Duration</span>
-                        <span class="text-white font-medium" id="avgSessionDuration">Loading...</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-400">Success Rate</span>
-                        <span class="text-green-400 font-medium" id="focusSuccessRate">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Comparative Analysis -->
-        <div class="glass-effect rounded-xl p-6 analytics-card mb-8">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-semibold flex items-center">
-                    <i class="fas fa-chart-bar text-amber-400 mr-2"></i>
-                    Comparative Performance Analysis
-                </h2>
-                <div class="flex items-center space-x-2">
-                    <select id="comparisonPeriod"
-                        class="bg-dark-surface border border-dark-border rounded-lg px-3 py-1 text-sm text-white">
-                        <option value="week">This Week vs Last Week</option>
-                        <option value="month">This Month vs Last Month</option>
-                        <option value="quarter">This Quarter vs Last Quarter</option>
-                    </select>
-                    <button class="text-gray-400 hover:text-white" onclick="refreshChart('comparisonChart')">
-                        <i class="fas fa-refresh"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="h-80">
-                <canvas id="comparisonChart"></canvas>
-            </div>
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="text-center p-4 bg-dark-surface/50 rounded-lg">
-                    <div class="text-2xl font-bold text-blue-400" id="currentTasks">Loading...</div>
-                    <div class="text-gray-400 text-sm">Current Period Tasks</div>
-                    <div class="text-gray-400 text-xs mt-1" id="taskChangePercent">Loading...</div>
-                </div>
-                <div class="text-center p-4 bg-dark-surface/50 rounded-lg">
-                    <div class="text-2xl font-bold text-emerald-400" id="currentHours">Loading...</div>
-                    <div class="text-gray-400 text-sm">Study Hours</div>
-                    <div class="text-gray-400 text-xs mt-1" id="hoursChangePercent">Loading...</div>
-                </div>
-                <div class="text-center p-4 bg-dark-surface/50 rounded-lg">
-                    <div class="text-2xl font-bold text-purple-400" id="currentFocus">Loading...</div>
-                    <div class="text-gray-400 text-sm">Focus Sessions</div>
-                    <div class="text-gray-400 text-xs mt-1" id="focusChangePercent">Loading...</div>
-                </div>
-                <div class="text-center p-4 bg-dark-surface/50 rounded-lg">
-                    <div class="text-2xl font-bold text-yellow-400" id="currentEfficiency">Loading...</div>
-                    <div class="text-gray-400 text-sm">Efficiency Score</div>
-                    <div class="text-gray-400 text-xs mt-1" id="efficiencyChangePercent">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activity & Insights -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Recent Activity Feed -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-history text-cyan-400 mr-2"></i>
-                        Recent Activity
-                    </h2>
-                    <button onclick="loadRecentActivity()" class="text-cyan-400 hover:text-cyan-300 text-sm">
-                        <i class="fas fa-refresh mr-1"></i>
-                        Refresh
-                    </button>
-                </div>
-                <div id="recentActivityFeed" class="space-y-3 max-h-80 overflow-y-auto">
-                    <div class="text-center text-gray-400 py-8">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
-                        <p>Loading recent activity...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI-Generated Insights -->
-            <div class="glass-effect rounded-xl p-6 analytics-card">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold flex items-center">
-                        <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
-                        AI Study Insights
-                    </h2>
-                    <button onclick="generateInsights()" class="text-yellow-400 hover:text-yellow-300 text-sm">
-                        <i class="fas fa-brain mr-1"></i>
-                        Generate
-                    </button>
-                </div>
-                <div id="studyInsights" class="space-y-4 max-h-80 overflow-y-auto">
-                    <div class="text-center text-gray-400 py-8">
-                        <i class="fas fa-spinner fa-spin text-2xl mb-4"></i>
-                        <p>Analyzing your study patterns...</p>
-                    </div>
-                </div>
+        <div class="mt-6 glass-effect rounded-lg p-4">
+            <p class="text-sm text-gray-400 mb-2">Study Insights</p>
+            <div id="studyInsights" class="space-y-3">
+                <!-- Backend-provided insights will render here -->
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark-card border-t border-dark-border mt-12">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                    <div
+                        class="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-brain text-white text-sm"></i>
+                    </div>
+                    <span
+                        class="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                        BrainyBalance
+                    </span>
+                </div>
+                <div class="flex items-center space-x-6 text-sm text-gray-400">
+                    <span>&copy; 2025 BrainyBalance. All rights reserved.</span>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Privacy Policy</a>
+                    <a href="#" class="hover:text-indigo-400 transition-colors">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script src="js/auth.js"></script>
     <script src="js/analytics.js"></script>

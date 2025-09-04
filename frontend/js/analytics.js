@@ -1,1037 +1,127 @@
-// Analytics Dashboard - Comprehensive Data Visualization
-// API Configuration
+// Minimal analytics script: fetches real data and renders two charts and key metrics
 const API_BASE = 'http://localhost:3000/api';
 
-// Chart instances
-let analyticsCharts = {};
-let taskData = null;
-let analyticsData = null;
+let charts = {};
 
-// Initialize analytics dashboard
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('Analytics page loaded, initializing...');
+function requireAuthToken() {
+    const token = localStorage.getItem('token');
+    return token || null;
+}
 
-    // Check if Chart.js is available
-    if (typeof Chart === 'undefined') {
-        console.error('Chart.js is not loaded');
-        showErrorStates();
+async function fetchJson(url, token) {
+    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+}
+
+async function loadAnalytics() {
+    const token = requireAuthToken();
+    if (!token) {
+        // Clear UI and require login
+        document.getElementById('totalStudyHours').textContent = 'Login required';
+        document.getElementById('tasksCompleted').textContent = '';
         return;
     }
 
-    initializeAnalytics();
-    setupEventListeners();
+    const period = document.getElementById('analyticsPeriodSelector')?.value || '7';
+    let periodStr = 'week';
+    if (Number(period) <= 7) periodStr = 'week';
+    else if (Number(period) <= 90) periodStr = 'month';
+    else periodStr = 'year';
+
+    try {
+        const [dashboard, tasks, insights] = await Promise.all([
+            fetchJson(`${API_BASE}/analytics/dashboard?period=${periodStr}`, token),
+            fetchJson(`${API_BASE}/tasks?sortBy=updatedAt&order=desc`, token),
+            fetchJson(`${API_BASE}/analytics/insights`, token).catch(() => null)
+        ]);
+
+        // Map and render metrics
+        const summary = dashboard.summary || {};
+        document.getElementById('totalStudyHours').textContent = Math.round((summary.totalWorkMinutes || 0) / 60) + 'h';
+        document.getElementById('tasksCompleted').textContent = summary.totalTasksCompleted || 0;
+        document.getElementById('focusSessions').textContent = summary.totalPomodoroSessions || 0;
+        document.getElementById('productivityScore').textContent = Math.round(summary.averageProductivityScore || 0) + '%';
+
+        // Daily study chart
+        const analyticsArr = Array.isArray(dashboard.analytics) ? dashboard.analytics : [];
+        const dailyLabels = analyticsArr.map(d => new Date(d.date).toLocaleDateString());
+        const dailyValues = analyticsArr.map(d => ((d.totalWorkMinutes || 0) / 60).toFixed(2));
+        renderLineChart('dailyStudyChart', dailyLabels, dailyValues, 'Study Hours');
+
+        // Task status pie/doughnut
+        const tasksList = Array.isArray(tasks.tasks) ? tasks.tasks : (Array.isArray(tasks) ? tasks : []);
+        const statusCounts = tasksList.reduce((acc, t) => {
+            const s = (t.status || 'pending').toLowerCase();
+            acc[s] = (acc[s] || 0) + 1;
+            return acc;
+        }, {});
+        const statusLabels = Object.keys(statusCounts);
+        const statusValues = statusLabels.map(k => statusCounts[k]);
+        renderDoughnutChart('statusChart', statusLabels, statusValues);
+
+        // Recent activity
+        const activities = (tasksList || []).slice(0, 6).map(t => ({
+            title: t.title || t.name || 'Untitled',
+            subtitle: t.status || t.priority || '',
+            time: t.updatedAt || t.createdAt
+        }));
+        renderRecentActivity(activities);
+
+        // Insights (if provided)
+        if (insights && (insights.insights || insights.length)) {
+            const arr = insights.insights || insights;
+            const container = document.getElementById('studyInsights');
+            container.innerHTML = arr.map(s => `<div class="p-3 bg-dark-surface/20 rounded">${escapeHtml(s)}</div>`).join('');
+        }
+
+    } catch (err) {
+        console.error('Load analytics failed:', err);
+        document.getElementById('totalStudyHours').textContent = 'Error';
+    }
+}
+
+function renderLineChart(canvasId, labels, values, label) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label, data: values, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.15)', fill: true }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function renderDoughnutChart(canvasId, labels, values) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data: values, backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+function renderRecentActivity(items) {
+    const c = document.getElementById('recentActivityFeed');
+    if (!c) return;
+    c.innerHTML = items.map(i => `
+        <div class="p-2 bg-dark-surface/10 rounded flex justify-between">
+            <div>
+                <div class="text-sm text-white">${escapeHtml(i.title)}</div>
+                <div class="text-xs text-gray-400">${escapeHtml(i.subtitle)}</div>
+            </div>
+            <div class="text-xs text-gray-400">${i.time ? new Date(i.time).toLocaleString() : ''}</div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// Wire controls
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('analyticsPeriodSelector').addEventListener('change', loadAnalytics);
+    document.getElementById('exportReportBtn').addEventListener('click', () => alert('Export not implemented'));
+    loadAnalytics();
 });
-
-// Setup event listeners
-function setupEventListeners() {
-    // Period selector change
-    document.getElementById('analyticsPeriodSelector')?.addEventListener('change', function () {
-        const period = this.value;
-        loadAnalyticsData(period);
-    });
-
-    // Time usage period change
-    document.getElementById('timeUsagePeriod')?.addEventListener('change', function () {
-        updateTimeUsageChart();
-    });
-
-    // Productivity metric change
-    document.getElementById('productivityMetric')?.addEventListener('change', function () {
-        updateProductivityChart();
-    });
-
-    // Comparison period change
-    document.getElementById('comparisonPeriod')?.addEventListener('change', function () {
-        updateComparisonChart();
-    });
-
-    // Export report button
-    document.getElementById('exportReportBtn')?.addEventListener('click', exportAnalyticsReport);
-}
-
-// Initialize analytics
-async function initializeAnalytics() {
-    try {
-        console.log('Starting analytics initialization...');
-        showLoadingStates();
-        await loadAnalyticsData(7); // Default to last 7 days
-        console.log('Analytics initialization completed');
-    } catch (error) {
-        console.error('Error initializing analytics:', error);
-        showErrorStates();
-    }
-}
-
-// Load analytics data from backend
-async function loadAnalyticsData(period = 7) {
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            console.log('No token found, using demo data');
-            loadDemoData();
-            return;
-        }
-
-        const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        };
-
-        // Try to fetch all analytics data
-        try {
-            const [
-                tasksResponse,
-                analyticsResponse,
-                timeUsageResponse,
-                focusSessionsResponse,
-                subjectsResponse
-            ] = await Promise.all([
-                fetch(`${API_BASE}/tasks?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/overview?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/time-usage?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/focus-sessions?period=${period}`, { headers }).catch(() => null),
-                fetch(`${API_BASE}/analytics/subjects?period=${period}`, { headers }).catch(() => null)
-            ]);
-
-            // If any critical response is null or not ok, use demo data
-            if (!tasksResponse || !analyticsResponse || !tasksResponse.ok || !analyticsResponse.ok) {
-                console.log('API not available, using demo data');
-                loadDemoData();
-                return;
-            }
-
-            const tasks = await tasksResponse.json();
-            const analytics = await analyticsResponse.json();
-            const timeUsage = timeUsageResponse ? await timeUsageResponse.json() : null;
-            const focusSessions = focusSessionsResponse ? await focusSessionsResponse.json() : null;
-            const subjects = subjectsResponse ? await subjectsResponse.json() : null;
-
-            // Store data
-            taskData = tasks;
-            analyticsData = {
-                overview: analytics,
-                timeUsage: timeUsage,
-                focusSessions: focusSessions,
-                subjects: subjects
-            };
-
-            // Update all visualizations
-            updateKeyMetrics();
-            createAllCharts();
-            updateActivityFeed();
-            generateInsights();
-
-        } catch (apiError) {
-            console.log('API error, falling back to demo data:', apiError);
-            loadDemoData();
-        }
-
-    } catch (error) {
-        console.error('Error loading analytics data:', error);
-        loadDemoData();
-    }
-}
-
-// Load demo data when API is not available
-function loadDemoData() {
-    console.log('Loading demo analytics data...');
-
-    // Demo task data
-    taskData = {
-        tasks: [
-            { id: 1, title: 'Math Assignment', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-05' },
-            { id: 2, title: 'Physics Exam Study', category: 'exam', priority: 'urgent', status: 'in-progress', dueDate: '2025-09-10' },
-            { id: 3, title: 'History Project', category: 'project', priority: 'medium', status: 'pending', dueDate: '2025-09-15' },
-            { id: 4, title: 'Chemistry Lab Report', category: 'assignment', priority: 'high', status: 'completed', dueDate: '2025-09-03' },
-            { id: 5, title: 'English Essay', category: 'assignment', priority: 'medium', status: 'overdue', dueDate: '2025-08-30' },
-            { id: 6, title: 'Biology Exam', category: 'exam', priority: 'urgent', status: 'pending', dueDate: '2025-09-12' },
-            { id: 7, title: 'Programming Project', category: 'project', priority: 'high', status: 'in-progress', dueDate: '2025-09-20' },
-            { id: 8, title: 'Personal Reading', category: 'personal', priority: 'low', status: 'completed', dueDate: '2025-09-01' }
-        ]
-    };
-
-    // Demo analytics data
-    analyticsData = {
-        overview: {
-            totalStudyHours: 127.5,
-            studyHoursTrend: 12.5,
-            tasksCompleted: 89,
-            tasksTrend: 8.2,
-            averageGrade: 87.5,
-            gradeTrend: 5.1,
-            productivityScore: 92,
-            productivityTrend: 3.7,
-            dailyHours: [
-                { date: '2025-08-27', hours: 4.5 },
-                { date: '2025-08-28', hours: 3.2 },
-                { date: '2025-08-29', hours: 5.1 },
-                { date: '2025-08-30', hours: 2.8 },
-                { date: '2025-08-31', hours: 4.7 },
-                { date: '2025-09-01', hours: 6.2 },
-                { date: '2025-09-02', hours: 3.9 }
-            ],
-            weeklyProgress: [
-                { week: 1, completed: 12, total: 15 },
-                { week: 2, completed: 18, total: 20 },
-                { week: 3, completed: 22, total: 25 },
-                { week: 4, completed: 16, total: 18 }
-            ],
-            productivityTrend: [
-                { date: '2025-08-27', score: 85 },
-                { date: '2025-08-28', score: 78 },
-                { date: '2025-08-29', score: 92 },
-                { date: '2025-08-30', score: 67 },
-                { date: '2025-08-31', score: 88 },
-                { date: '2025-09-01', score: 95 },
-                { date: '2025-09-02', score: 91 }
-            ],
-            comparison: {
-                current: { tasks: 28, hours: 42.5, focus: 34, efficiency: 87 },
-                previous: { tasks: 25, hours: 38.2, focus: 29, efficiency: 82 }
-            }
-        },
-        timeUsage: {
-            studyTime: 25.4,
-            taskWork: 18.7,
-            breakTime: 5.2,
-            focusTime: 12.8
-        },
-        focusSessions: {
-            totalSessions: 45,
-            averageDuration: 28,
-            successRate: 85,
-            sessions: [
-                { date: '2025-08-27', duration: 25 },
-                { date: '2025-08-28', duration: 30 },
-                { date: '2025-08-29', duration: 35 },
-                { date: '2025-08-30', duration: 20 },
-                { date: '2025-08-31', duration: 28 },
-                { date: '2025-09-01', duration: 32 },
-                { date: '2025-09-02', duration: 26 }
-            ]
-        },
-        subjects: [
-            { name: 'Mathematics', averageScore: 92 },
-            { name: 'Physics', averageScore: 88 },
-            { name: 'Chemistry', averageScore: 85 },
-            { name: 'Biology', averageScore: 90 },
-            { name: 'English', averageScore: 87 },
-            { name: 'History', averageScore: 83 }
-        ]
-    };
-
-    // Update all visualizations with demo data
-    updateKeyMetrics();
-    createAllCharts();
-    loadDemoActivity();
-    loadDemoInsights();
-}
-
-// Load demo activity
-function loadDemoActivity() {
-    const activities = [
-        {
-            description: 'Completed Math Assignment',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-            icon: 'check-circle',
-            color: 'green'
-        },
-        {
-            description: 'Started Physics Exam Study',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-            icon: 'book',
-            color: 'blue'
-        },
-        {
-            description: 'Completed Focus Session (25 min)',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-            icon: 'brain',
-            color: 'purple'
-        },
-        {
-            description: 'Updated Chemistry Lab Report',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-            icon: 'flask',
-            color: 'yellow'
-        }
-    ];
-
-    displayRecentActivity(activities);
-}
-
-// Load demo insights
-function loadDemoInsights() {
-    const insights = [
-        {
-            title: 'Peak Performance Time',
-            description: 'You are most productive between 10:00 AM - 12:00 PM with 95% task completion rate.',
-            type: 'positive',
-            icon: 'clock'
-        },
-        {
-            title: 'Study Pattern Analysis',
-            description: 'Your focus sessions are 15% longer on weekdays. Consider scheduling important tasks during this time.',
-            type: 'info',
-            icon: 'chart-line'
-        },
-        {
-            title: 'Subject Balance',
-            description: 'Mathematics and Physics are taking 60% of your study time. Consider balancing with other subjects.',
-            type: 'warning',
-            icon: 'balance-scale'
-        }
-    ];
-
-    displayInsights(insights);
-}
-
-// Update key metrics
-function updateKeyMetrics() {
-    if (!analyticsData?.overview) return;
-
-    const overview = analyticsData.overview;
-
-    // Total Study Hours
-    document.getElementById('totalStudyHours').textContent = `${overview.totalStudyHours || 0}h`;
-    document.getElementById('studyHoursTrend').innerHTML =
-        `<i class="fas fa-${overview.studyHoursTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
-         ${Math.abs(overview.studyHoursTrend || 0)}% vs last period`;
-
-    // Tasks Completed
-    document.getElementById('tasksCompleted').textContent = overview.tasksCompleted || 0;
-    document.getElementById('tasksCompletedTrend').innerHTML =
-        `<i class="fas fa-${overview.tasksTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
-         ${Math.abs(overview.tasksTrend || 0)}% vs last period`;
-
-    // Average Grade
-    document.getElementById('averageGrade').textContent = `${overview.averageGrade || 0}%`;
-    document.getElementById('averageGradeTrend').innerHTML =
-        `<i class="fas fa-${overview.gradeTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
-         ${Math.abs(overview.gradeTrend || 0)}% vs last period`;
-
-    // Productivity Score
-    document.getElementById('productivityScore').textContent = overview.productivityScore || 0;
-    document.getElementById('productivityTrend').innerHTML =
-        `<i class="fas fa-${overview.productivityTrend >= 0 ? 'arrow-up text-green-400' : 'arrow-down text-red-400'}"></i> 
-         ${Math.abs(overview.productivityTrend || 0)}% vs last period`;
-}
-
-// Create all charts
-function createAllCharts() {
-    console.log('Creating all charts...');
-    createDailyStudyChart();
-    createWeeklyProgressChart();
-    createTaskTypeChart();
-    createPriorityChart();
-    createStatusChart();
-    createTimeUsageChart();
-    createSubjectChart();
-    createProductivityChart();
-    createFocusChart();
-    createComparisonChart();
-    console.log('All charts creation completed');
-}
-
-// Daily Study Hours Chart
-function createDailyStudyChart() {
-    console.log('Creating daily study chart...');
-    const ctx = document.getElementById('dailyStudyChart');
-    if (!ctx) {
-        console.log('Daily study chart canvas not found');
-        return;
-    }
-    if (!analyticsData?.overview?.dailyHours) {
-        console.log('No daily hours data available');
-        return;
-    }
-
-    if (analyticsCharts.dailyStudyChart) {
-        analyticsCharts.dailyStudyChart.destroy();
-    }
-
-    const data = analyticsData.overview.dailyHours;
-    const labels = data.map(item => new Date(item.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
-    const values = data.map(item => item.hours);
-
-    analyticsCharts.dailyStudyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Study Hours',
-                data: values,
-                borderColor: '#06b6d4',
-                backgroundColor: 'rgba(6, 182, 212, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update daily average
-    const average = values.reduce((a, b) => a + b, 0) / values.length;
-    document.getElementById('dailyAverage').textContent = `${average.toFixed(1)}h`;
-}
-
-// Weekly Progress Chart
-function createWeeklyProgressChart() {
-    const ctx = document.getElementById('weeklyProgressChart');
-    if (!ctx || !analyticsData?.overview?.weeklyProgress) return;
-
-    if (analyticsCharts.weeklyProgressChart) {
-        analyticsCharts.weeklyProgressChart.destroy();
-    }
-
-    const data = analyticsData.overview.weeklyProgress;
-    const labels = data.map(item => `Week ${item.week}`);
-    const completed = data.map(item => item.completed);
-    const total = data.map(item => item.total);
-
-    analyticsCharts.weeklyProgressChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Completed',
-                    data: completed,
-                    backgroundColor: '#10b981'
-                },
-                {
-                    label: 'Total',
-                    data: total,
-                    backgroundColor: '#374151'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update weekly metrics
-    const totalCompleted = completed.reduce((a, b) => a + b, 0);
-    const totalTasks = total.reduce((a, b) => a + b, 0);
-    const completionRate = totalTasks > 0 ? (totalCompleted / totalTasks * 100).toFixed(1) : 0;
-    const avgWeeklyTasks = totalTasks / data.length;
-
-    document.getElementById('weeklyCompletion').textContent = `${completionRate}%`;
-    document.getElementById('avgWeeklyTasks').textContent = avgWeeklyTasks.toFixed(1);
-}
-
-// Task Type Chart (Exam, Assignment, Project)
-function createTaskTypeChart() {
-    const ctx = document.getElementById('taskTypeChart');
-    if (!ctx || !taskData?.tasks) return;
-
-    if (analyticsCharts.taskTypeChart) {
-        analyticsCharts.taskTypeChart.destroy();
-    }
-
-    // Count tasks by type
-    const typeCounts = {
-        exam: 0,
-        assignment: 0,
-        project: 0,
-        personal: 0
-    };
-
-    taskData.tasks.forEach(task => {
-        const type = (task.category || task.type || 'personal').toLowerCase();
-        if (typeCounts.hasOwnProperty(type)) {
-            typeCounts[type]++;
-        } else {
-            typeCounts.personal++;
-        }
-    });
-
-    analyticsCharts.taskTypeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Exams', 'Assignments', 'Projects', 'Personal'],
-            datasets: [{
-                data: [typeCounts.exam, typeCounts.assignment, typeCounts.project, typeCounts.personal],
-                backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-
-    // Update counts
-    document.getElementById('examCount').textContent = typeCounts.exam;
-    document.getElementById('assignmentCount').textContent = typeCounts.assignment;
-    document.getElementById('projectCount').textContent = typeCounts.project;
-    document.getElementById('personalCount').textContent = typeCounts.personal;
-}
-
-// Priority Chart
-function createPriorityChart() {
-    const ctx = document.getElementById('priorityChart');
-    if (!ctx || !taskData?.tasks) return;
-
-    if (analyticsCharts.priorityChart) {
-        analyticsCharts.priorityChart.destroy();
-    }
-
-    // Count tasks by priority
-    const priorityCounts = {
-        urgent: 0,
-        high: 0,
-        medium: 0,
-        low: 0
-    };
-
-    taskData.tasks.forEach(task => {
-        const priority = (task.priority || 'low').toLowerCase();
-        if (priorityCounts.hasOwnProperty(priority)) {
-            priorityCounts[priority]++;
-        } else {
-            priorityCounts.low++;
-        }
-    });
-
-    analyticsCharts.priorityChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Urgent', 'High', 'Medium', 'Low'],
-            datasets: [{
-                data: [priorityCounts.urgent, priorityCounts.high, priorityCounts.medium, priorityCounts.low],
-                backgroundColor: ['#dc2626', '#f97316', '#eab308', '#22c55e']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-
-    // Update counts
-    document.getElementById('urgentCount').textContent = priorityCounts.urgent;
-    document.getElementById('highCount').textContent = priorityCounts.high;
-    document.getElementById('mediumCount').textContent = priorityCounts.medium;
-    document.getElementById('lowCount').textContent = priorityCounts.low;
-}
-
-// Status Chart
-function createStatusChart() {
-    const ctx = document.getElementById('statusChart');
-    if (!ctx || !taskData?.tasks) return;
-
-    if (analyticsCharts.statusChart) {
-        analyticsCharts.statusChart.destroy();
-    }
-
-    // Count tasks by status
-    const statusCounts = {
-        completed: 0,
-        'in-progress': 0,
-        pending: 0,
-        overdue: 0
-    };
-
-    const now = new Date();
-    taskData.tasks.forEach(task => {
-        let status = (task.status || 'pending').toLowerCase();
-
-        // Check if task is overdue
-        if (status !== 'completed' && task.dueDate && new Date(task.dueDate) < now) {
-            status = 'overdue';
-        }
-
-        if (statusCounts.hasOwnProperty(status)) {
-            statusCounts[status]++;
-        } else {
-            statusCounts.pending++;
-        }
-    });
-
-    analyticsCharts.statusChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Completed', 'In Progress', 'Pending', 'Overdue'],
-            datasets: [{
-                data: [statusCounts.completed, statusCounts['in-progress'], statusCounts.pending, statusCounts.overdue],
-                backgroundColor: ['#22c55e', '#3b82f6', '#eab308', '#ef4444']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-
-    // Update counts
-    document.getElementById('completedCount').textContent = statusCounts.completed;
-    document.getElementById('inProgressCount').textContent = statusCounts['in-progress'];
-    document.getElementById('pendingCount').textContent = statusCounts.pending;
-    document.getElementById('overdueCount').textContent = statusCounts.overdue;
-}
-
-// Time Usage Chart
-function createTimeUsageChart() {
-    const ctx = document.getElementById('timeUsageChart');
-    if (!ctx || !analyticsData?.timeUsage) return;
-
-    if (analyticsCharts.timeUsageChart) {
-        analyticsCharts.timeUsageChart.destroy();
-    }
-
-    const data = analyticsData.timeUsage;
-
-    analyticsCharts.timeUsageChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Study Time', 'Task Work', 'Break Time', 'Focus Sessions'],
-            datasets: [{
-                data: [data.studyTime || 0, data.taskWork || 0, data.breakTime || 0, data.focusTime || 0],
-                backgroundColor: ['#3b82f6', '#10b981', '#eab308', '#8b5cf6']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update time values
-    document.getElementById('studyTimeValue').textContent = `${data.studyTime || 0}h`;
-    document.getElementById('taskTimeValue').textContent = `${data.taskWork || 0}h`;
-    document.getElementById('breakTimeValue').textContent = `${data.breakTime || 0}h`;
-    document.getElementById('focusTimeValue').textContent = `${data.focusTime || 0}h`;
-}
-
-// Subject Performance Chart
-function createSubjectChart() {
-    const ctx = document.getElementById('subjectChart');
-    if (!ctx || !analyticsData?.subjects) return;
-
-    if (analyticsCharts.subjectChart) {
-        analyticsCharts.subjectChart.destroy();
-    }
-
-    const subjects = analyticsData.subjects;
-    const labels = subjects.map(s => s.name);
-    const scores = subjects.map(s => s.averageScore);
-
-    analyticsCharts.subjectChart = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Performance',
-                data: scores,
-                borderColor: '#06b6d4',
-                backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                pointBackgroundColor: '#06b6d4'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                r: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    pointLabels: { color: '#94a3b8' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Find best subject
-    if (subjects.length > 0) {
-        const bestSubject = subjects.reduce((prev, current) =>
-            (prev.averageScore > current.averageScore) ? prev : current
-        );
-        document.getElementById('bestSubject').textContent = bestSubject.name;
-    }
-}
-
-// Productivity Chart
-function createProductivityChart() {
-    const ctx = document.getElementById('productivityChart');
-    if (!ctx || !analyticsData?.overview?.productivityTrend) return;
-
-    if (analyticsCharts.productivityChart) {
-        analyticsCharts.productivityChart.destroy();
-    }
-
-    const data = analyticsData.overview.productivityTrend;
-    const labels = data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-    const values = data.map(item => item.score);
-
-    analyticsCharts.productivityChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Productivity Score',
-                data: values,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update productivity metrics
-    const currentScore = values[values.length - 1] || 0;
-    const previousScore = values[values.length - 2] || 0;
-    const change = currentScore - previousScore;
-    const average = values.reduce((a, b) => a + b, 0) / values.length;
-
-    document.getElementById('productivityChange').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
-    document.getElementById('productivityAverage').textContent = average.toFixed(1);
-}
-
-// Focus Session Chart
-function createFocusChart() {
-    const ctx = document.getElementById('focusChart');
-    if (!ctx || !analyticsData?.focusSessions) return;
-
-    if (analyticsCharts.focusChart) {
-        analyticsCharts.focusChart.destroy();
-    }
-
-    const data = analyticsData.focusSessions;
-    const labels = data.sessions.map(s => new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-    const durations = data.sessions.map(s => s.duration);
-
-    analyticsCharts.focusChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Session Duration (min)',
-                data: durations,
-                backgroundColor: '#ec4899'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update focus metrics
-    document.getElementById('totalSessions').textContent = data.totalSessions || 0;
-    document.getElementById('avgSessionDuration').textContent = `${data.averageDuration || 0} min`;
-    document.getElementById('focusSuccessRate').textContent = `${data.successRate || 0}%`;
-}
-
-// Comparison Chart
-function createComparisonChart() {
-    const ctx = document.getElementById('comparisonChart');
-    if (!ctx || !analyticsData?.overview?.comparison) return;
-
-    if (analyticsCharts.comparisonChart) {
-        analyticsCharts.comparisonChart.destroy();
-    }
-
-    const comparison = analyticsData.overview.comparison;
-
-    analyticsCharts.comparisonChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Tasks', 'Study Hours', 'Focus Sessions', 'Efficiency'],
-            datasets: [
-                {
-                    label: 'Current Period',
-                    data: [comparison.current.tasks, comparison.current.hours, comparison.current.focus, comparison.current.efficiency],
-                    backgroundColor: '#3b82f6'
-                },
-                {
-                    label: 'Previous Period',
-                    data: [comparison.previous.tasks, comparison.previous.hours, comparison.previous.focus, comparison.previous.efficiency],
-                    backgroundColor: '#6b7280'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: { color: '#94a3b8' }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                },
-                x: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
-                }
-            }
-        }
-    });
-
-    // Update comparison metrics
-    document.getElementById('currentTasks').textContent = comparison.current.tasks;
-    document.getElementById('currentHours').textContent = `${comparison.current.hours}h`;
-    document.getElementById('currentFocus').textContent = comparison.current.focus;
-    document.getElementById('currentEfficiency').textContent = `${comparison.current.efficiency}%`;
-
-    // Calculate percentage changes
-    const taskChange = ((comparison.current.tasks - comparison.previous.tasks) / comparison.previous.tasks * 100).toFixed(1);
-    const hoursChange = ((comparison.current.hours - comparison.previous.hours) / comparison.previous.hours * 100).toFixed(1);
-    const focusChange = ((comparison.current.focus - comparison.previous.focus) / comparison.previous.focus * 100).toFixed(1);
-    const efficiencyChange = ((comparison.current.efficiency - comparison.previous.efficiency) / comparison.previous.efficiency * 100).toFixed(1);
-
-    document.getElementById('taskChangePercent').textContent = `${taskChange >= 0 ? '+' : ''}${taskChange}%`;
-    document.getElementById('hoursChangePercent').textContent = `${hoursChange >= 0 ? '+' : ''}${hoursChange}%`;
-    document.getElementById('focusChangePercent').textContent = `${focusChange >= 0 ? '+' : ''}${focusChange}%`;
-    document.getElementById('efficiencyChangePercent').textContent = `${efficiencyChange >= 0 ? '+' : ''}${efficiencyChange}%`;
-}
-
-// Update activity feed
-async function updateActivityFeed() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/analytics/recent-activity`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const activities = await response.json();
-            displayRecentActivity(activities);
-        }
-    } catch (error) {
-        console.error('Error loading recent activity:', error);
-    }
-}
-
-function displayRecentActivity(activities) {
-    const container = document.getElementById('recentActivityFeed');
-    if (!container) return;
-
-    if (!activities || activities.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-inbox text-2xl mb-4"></i>
-                <p>No recent activity</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = activities.map(activity => `
-        <div class="flex items-start space-x-3 p-3 bg-dark-surface/30 rounded-lg">
-            <div class="bg-${activity.color || 'blue'}-500/20 p-2 rounded-lg">
-                <i class="fas fa-${activity.icon || 'circle'} text-${activity.color || 'blue'}-400"></i>
-            </div>
-            <div class="flex-1">
-                <div class="text-white text-sm">${activity.description}</div>
-                <div class="text-gray-400 text-xs mt-1">${formatTimeAgo(activity.timestamp)}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Generate AI insights
-async function generateInsights() {
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/analytics/insights`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const insights = await response.json();
-            displayInsights(insights);
-        }
-    } catch (error) {
-        console.error('Error generating insights:', error);
-    }
-}
-
-function displayInsights(insights) {
-    const container = document.getElementById('studyInsights');
-    if (!container) return;
-
-    if (!insights || insights.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-400 py-8">
-                <i class="fas fa-lightbulb text-2xl mb-4"></i>
-                <p>No insights available yet</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = insights.map(insight => `
-        <div class="p-4 bg-dark-surface/30 rounded-lg border-l-4 border-${insight.type === 'positive' ? 'green' : insight.type === 'warning' ? 'yellow' : 'blue'}-400">
-            <div class="flex items-start space-x-3">
-                <i class="fas fa-${insight.icon || 'lightbulb'} text-${insight.type === 'positive' ? 'green' : insight.type === 'warning' ? 'yellow' : 'blue'}-400 mt-1"></i>
-                <div>
-                    <div class="text-white text-sm">${insight.title}</div>
-                    <div class="text-gray-400 text-xs mt-1">${insight.description}</div>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Utility functions
-function showLoadingStates() {
-    // Show loading spinners in all metric cards
-    const loadingElements = document.querySelectorAll('[id$="Hours"], [id$="Completed"], [id$="Grade"], [id$="Score"]');
-    loadingElements.forEach(el => {
-        if (el) el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    });
-}
-
-function showErrorStates() {
-    // Show error states
-    const errorElements = document.querySelectorAll('[id$="Hours"], [id$="Completed"], [id$="Grade"], [id$="Score"]');
-    errorElements.forEach(el => {
-        if (el) el.textContent = 'Error';
-    });
-}
-
-function refreshChart(chartId) {
-    // Refresh specific chart
-    loadAnalyticsData(document.getElementById('analyticsPeriodSelector')?.value || 7);
-}
-
-function loadRecentActivity() {
-    updateActivityFeed();
-}
-
-function exportAnalyticsReport() {
-    // Export functionality
-    console.log('Exporting analytics report...');
-    // Implementation would go here
-}
-
-function formatTimeAgo(timestamp) {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInMinutes = Math.floor((now - time) / 60000);
-
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
-}
-
-// Chart update functions for period changes
-function updateTimeUsageChart() {
-    const period = document.getElementById('timeUsagePeriod')?.value;
-    // Reload time usage data for the selected period
-    loadAnalyticsData(document.getElementById('analyticsPeriodSelector')?.value || 7);
-}
-
-function updateProductivityChart() {
-    const metric = document.getElementById('productivityMetric')?.value;
-    // Update productivity chart based on selected metric
-    createProductivityChart();
-}
-
-function updateComparisonChart() {
-    const period = document.getElementById('comparisonPeriod')?.value;
-    // Update comparison chart based on selected period
-    createComparisonChart();
-}

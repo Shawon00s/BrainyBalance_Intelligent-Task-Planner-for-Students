@@ -191,7 +191,7 @@ async function registerUser(userData) {
 
 document.addEventListener('DOMContentLoaded', function () {
     // Check if we're on a protected page
-    const protectedPages = ['dashboard.html', 'tasks.html', 'schedule.html', 'pomodoro.html', 'analytics.html'];
+    const protectedPages = ['dashboard.html', 'tasks.html', 'schedule.html', 'pomodoro.html', 'analytics.html', 'ai-recommendations.html'];
     const currentPage = window.location.pathname.split('/').pop();
 
     // Only check authentication for protected pages
